@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 expr: `P<sub>i</sub> = Σ<sub>i</sub> [(P<sub>OMIE i</sub> × (1 + Perdas<sub>i</sub>) × K<sub>1</sub> + K<sub>2</sub> + TAR<sub>Energia i</sub>]`,
                 legenda: [
                     ["OMIE", "Preço médio do mercado grossista para o período de faturação (€/kWh)"],
-                    ["Perdas<sub>i</sub>", "Coeficiente de ajustamento para perdas na rede (variável)"],
+                    ["Perdas<sub>i</sub>", "Coeficiente de ajustamento para perdas na rede (1,1640)"],
                     ["K<sub>1</sub>", () => c('EDP_M_K1', '(adimensional)', 2)],
                     ["K<sub>2</sub>", () => c('EDP_M_K2')],
                     ["TAR", TAR],
