@@ -16,8 +16,10 @@ header {
     background-color: #2c3e50;
     color: white;
     padding: 20px;
-    display: flex; /* Usamos flex para centrar o bloco de conteúdo */
+    display: flex;
     justify-content: center;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
 }
 
 /* O contentor do conteúdo do header (logo, título, subtitulo) */
@@ -63,12 +65,16 @@ footer {
     text-align: center;
     padding: 20px;
     border-top: 1px solid #4a627a;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
 }
 
 nav {
     background-color: #34495e;
     padding: 1em;
     text-align: center;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
 }
 
 nav a {
