@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Tarifários Gás Natural 2025: Poupe na Fatura | Tiago Felícia</title>
+    <meta name="description" content="Compare tarifários de gás natural em Portugal para 2025. Simulador gratuito para descobrir quanto pode poupar na sua fatura de gás." />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/highcharts/highcharts.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        :root {
+            --primary: #d97706; --bg: #f8fafc; --surface: #ffffff;
+            --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+            --success: #16a34a; --warning: #d97706; --danger: #dc2626;
+            --gas-accent: #f59e0b; --gas-light: #fef3c7; --gas-dark: #92400e;
+        }
+        [data-theme="dark"] {
+            --primary: #fbbf24; --bg: #0f172a; --surface: #1e293b;
+            --text-main: #e2e8f0; --text-light: #94a3b8; --border: #334155;
+            --success: #4ade80; --warning: #fbbf24; --danger: #f87171;
+            --gas-light: #2a2714; --gas-dark: #fbbf24;
+        }
+        [data-theme="dark"] input, [data-theme="dark"] select { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        [data-theme="dark"] th { background: #4a5568; color: #e2e8f0; }
+        [data-theme="dark"] .table-wrapper { background: var(--surface); border-color: var(--border); }
+        [data-theme="dark"] th:hover { background: #334155; color: var(--primary); }
+        [data-theme="dark"] tr:hover { background: #1e293b; }
+        [data-theme="dark"] main { background: #0f172a; }
+        [data-theme="dark"] .section-content input, [data-theme="dark"] .section-content select { background: #1e293b !important; color: #e2e8f0 !important; border-color: #475569 !important; }
+        [data-theme="dark"] .podium-item { background: #1e293b !important; border-color: #475569 !important; }
+        [data-theme="dark"] .podium-item.first { border-color: #fbbf24 !important; }
+        [data-theme="dark"] .podium-item.second { border-color: #94a3b8 !important; }
+        [data-theme="dark"] .podium-item.third { border-color: #cd7f32 !important; }
+        [data-theme="dark"] .podium-name { color: #e2e8f0 !important; }
+        [data-theme="dark"] .podium-price { color: var(--success) !important; }
+        [data-theme="dark"] .podium-savings { color: #94a3b8 !important; }
+        [data-theme="dark"] .podium-tariff { color: #94a3b8 !important; }
+        [data-theme="dark"] .filters-bar { background: var(--surface); }
+        [data-theme="dark"] .filters-bar select { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        [data-theme="dark"] #resumo-box { background: #1e293b !important; border-color: #475569 !important; color: #e2e8f0 !important; }
+        [data-theme="dark"] #poupanca-msg span { filter: brightness(1.3); }
+        [data-theme="dark"] #mibgas-chart-container { background: #1e293b; }
+
+        * { box-sizing: border-box; }
+        body { font-family: 'Roboto', sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 0; font-size: 0.92rem; line-height: 1.5; }
+        .hidden { display: none !important; }
+
+        /* Simulator-specific header/layout */
+        #menu-placeholder { margin-bottom: 0; }
+        #footer-placeholder { margin-top: 0; }
+        #simulador-header { padding: 30px 20px 20px; }
+        #simulador-header h1 { font-size: 1.4rem; margin: 0; }
+        #simulador-header p { font-size: 0.88rem; }
+        [data-theme="dark"] #simulador-header { background: #0f172a; }
+        [data-theme="dark"] #simulador-header h1 { color: #e2e8f0; }
+        [data-theme="dark"] #simulador-header p { color: #94a3b8; }
+
+        /* Tabs container (full width, flex:1 per tab) */
+        .tabs-container { margin: 0 20px; max-width: none !important; width: auto; }
+        .tabs-header { display: flex; gap: 0; background: var(--surface); border-radius: 12px 12px 0 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        .tab-btn { flex: 1; padding: 16px 24px; background: #f1f5f9; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 1rem; font-weight: 600; color: var(--text-light); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; }
+        .tab-btn:hover { background: #e2e8f0; color: var(--text-main); }
+        .tab-btn.active { background: var(--surface); color: var(--primary); border-bottom-color: var(--primary); }
+        .dark-toggle { flex: 0 0 auto; margin-left: 0; background: #f1f5f9; border: none; border-bottom: 3px solid transparent; padding: 16px 20px; cursor: pointer; color: var(--text-light); font-size: 1rem; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+        .dark-toggle:hover { background: #e2e8f0; color: var(--text-main); }
+        [data-theme="dark"] .tab-btn { background: #1e293b; color: #94a3b8; }
+        [data-theme="dark"] .tab-btn:hover { background: #334155; color: #e2e8f0; }
+        [data-theme="dark"] .tab-btn.active { background: var(--surface); color: var(--primary); }
+        [data-theme="dark"] .dark-toggle { background: #1e293b; color: #94a3b8; }
+        [data-theme="dark"] .dark-toggle:hover { background: #334155; color: #e2e8f0; }
+        [data-theme="dark"] #tab-faq details { border-color: var(--border); }
+        [data-theme="dark"] #tab-faq summary { background: #1e293b; color: #e2e8f0; }
+        /* Export/share buttons dark */
+        [data-theme="dark"] #btn-partilhar { background: #1e293b !important; }
+        [data-theme="dark"] #btn-exportar { background: #1e293b !important; }
+        [data-theme="dark"] #btn-pdf { background: #1e293b !important; }
+        /* Provider checkboxes */
+        .provider-checkbox { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s; background: var(--surface); }
+        .provider-checkbox:hover { background: var(--bg); border-color: var(--primary); }
+        .provider-checkbox input { accent-color: var(--danger); }
+        [data-theme="dark"] .provider-checkbox { background: #1e293b !important; border-color: #475569 !important; color: #e2e8f0 !important; }
+        [data-theme="dark"] .provider-checkbox:hover { background: #334155 !important; }
+        /* Watermark footer */
+        [data-theme="dark"] #watermark-footer { background: #1e293b !important; border-top-color: #fbbf24 !important; }
+        [data-theme="dark"] #watermark-footer .wm-title { color: #e2e8f0 !important; }
+        [data-theme="dark"] #watermark-footer .wm-sub { color: #94a3b8 !important; }
+        [data-theme="dark"] #watermark-footer .wm-link { color: #fbbf24 !important; }
+        [data-theme="dark"] #watermark-footer .wm-copy { color: #64748b !important; }
+
+        /* Cenários button */
+        .btn-cenarios { background: none; border: 1px solid var(--border); border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-light); font-size: 0.85rem; transition: all 0.2s; margin-left: auto; }
+        .btn-cenarios:hover { background: var(--primary); color: white; border-color: var(--primary); }
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: var(--surface); border-radius: 12px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 420px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-box h3 { margin: 0 0 16px 0; font-size: 1.1rem; color: var(--text-main); }
+        .modal-box .saved-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; transition: background 0.15s; }
+        .modal-box .saved-item:hover { background: rgba(217,119,6,0.05); }
+        .modal-box .saved-info { flex: 1; cursor: pointer; }
+        .modal-box .saved-name { font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
+        .modal-box .saved-meta { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
+        .modal-box .saved-actions { display: flex; gap: 6px; }
+        .modal-box .saved-actions button { background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 0.8rem; transition: all 0.15s; }
+        .modal-box .saved-actions .btn-load { color: var(--primary); }
+        .modal-box .saved-actions .btn-load:hover { background: rgba(217,119,6,0.1); }
+        .modal-box .saved-actions .btn-del { color: var(--danger); }
+        .modal-box .saved-actions .btn-del:hover { background: rgba(220,38,38,0.1); }
+        .save-input-row { display: flex; gap: 8px; margin-bottom: 6px; }
+        .save-input-row input[type="text"] { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: var(--bg); color: var(--text-main); font-family: inherit; }
+        .save-input-row .btn-save { padding: 8px 16px; border: none; background: var(--primary); color: white; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+        .save-input-row .btn-save:hover { opacity: 0.9; }
+        .modal-close { display: block; width: 100%; margin-top: 12px; padding: 10px; border: 1px solid var(--border); background: none; border-radius: 8px; cursor: pointer; color: var(--text-light); font-size: 0.85rem; }
+        .modal-close:hover { background: var(--bg); }
+
+        /* Quick Simulation */
+        .quick-sim-container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+        .quick-card { background: var(--surface); padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 10px; }
+        .quick-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; color: var(--text-main); }
+        .price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .price-button, .power-button { padding: 8px; background: #f8fafc; border: 2px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Roboto Mono', monospace; transition: all 0.2s; text-align: center; font-size: 0.85rem; }
+        .price-button:hover, .power-button:hover { background: #e2e8f0; }
+        .price-button.selected, .power-button.selected { background: var(--primary); color: white; border-color: var(--primary); }
+        .quick-option { padding: 10px 12px; background: #f8fafc; border: 2px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
+        .quick-option:hover { background: #e2e8f0; }
+        .quick-option.selected { background: var(--primary); color: white; border-color: var(--primary); }
+        .quick-option input[type="radio"] { accent-color: white; }
+        [data-theme="dark"] .quick-card { background: #1e293b !important; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        [data-theme="dark"] .quick-title { color: #e2e8f0 !important; }
+        [data-theme="dark"] .price-button, [data-theme="dark"] .power-button { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        [data-theme="dark"] .price-button:hover, [data-theme="dark"] .power-button:hover { background: #334155; }
+        [data-theme="dark"] .price-button.selected, [data-theme="dark"] .power-button.selected { background: var(--primary) !important; color: white !important; border-color: var(--primary) !important; }
+        [data-theme="dark"] .quick-option { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        [data-theme="dark"] .quick-option:hover { background: #334155; }
+        [data-theme="dark"] .quick-option.selected { background: var(--primary) !important; color: white !important; border-color: var(--primary) !important; }
+        [data-theme="dark"] #quick-providers-content { background: #1e293b; }
+        [data-theme="dark"] #quick-providers-content .provider-checkbox { background: #0f172a !important; border-color: #475569 !important; color: #e2e8f0 !important; }
+        [data-theme="dark"] #tab-quick input[type="number"] { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        [data-theme="dark"] #tab-quick .quick-card span { color: #e2e8f0; }
+        [data-theme="dark"] #tab-quick .quick-card div[style*="background:#f1f5f9"] { background: #334155 !important; }
+        [data-theme="dark"] #tab-quick .quick-card div[style*="background:#f1f5f9"] span { color: #e2e8f0 !important; }
+        [data-theme="dark"] #provider-filters button, [data-theme="dark"] #quick-provider-filters button { background: #334155 !important; color: #e2e8f0 !important; border-color: #475569 !important; }
+        [data-theme="dark"] #alerta-consumo-negativo, [data-theme="dark"] #alerta-quick-negativo { background: #450a0a !important; border-color: #7f1d1d !important; color: #fca5a5 !important; }
+
+        /* Grid Layout */
+        .grid-container { display: grid; grid-template-columns: 360px 1fr; gap: 20px; max-width: none; margin: 0 auto; padding: 0 20px; align-items: start; }
+
+        /* Sidebar */
+        .sidebar { background: var(--surface); padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 20px; overflow-y: auto; max-height: 90vh; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; padding: 10px 12px; border-radius: 8px; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; margin-top: 12px; letter-spacing: 0.05em; transition: all 0.15s; }
+        .section-title:hover { filter: brightness(0.92); }
+        .section-content { margin-bottom: 8px; padding: 12px; border-radius: 0 8px 8px 0; margin-left: -2px; }
+        .section-content.collapsed { display: none; }
+        .collapsed { display: none; }
+
+        /* Secções coloridas */
+        .st-escalao { background: #FDE68A !important; color: #92400e !important; }
+        #content-escalao { background: #FFFBEB; border-left: 4px solid #FDE68A; }
+        [data-theme="dark"] .st-escalao { background: #78350f !important; color: #fde68a !important; }
+        [data-theme="dark"] #content-escalao { background: #1a1800; border-left-color: #78350f; }
+
+        .st-consumo { background: #F6C9B0 !important; color: #5f370e !important; }
+        #content-consumo { background: #fff8f5; border-left: 4px solid #F6C9B0; }
+        [data-theme="dark"] .st-consumo { background: #6b4a36 !important; color: #f0d4c0 !important; }
+        [data-theme="dark"] #content-consumo { background: #271e18; border-left-color: #6b4a36; }
+
+        .st-datas { background: #adc5d7 !important; color: #1e3a8a !important; }
+        #content-datas { background: #f0f4f8; border-left: 4px solid #adc5d7; }
+        [data-theme="dark"] .st-datas { background: #3b5a72 !important; color: #bdd4e6 !important; }
+        [data-theme="dark"] #content-datas { background: #1a2332; border-left-color: #3b5a72; }
+
+        .st-mibgas { background: #FFE699 !important; color: #6b4c00 !important; }
+        #content-mibgas { background: #FFFDE7; border-left: 4px solid #FFE699; }
+        [data-theme="dark"] .st-mibgas { background: #5c4a10 !important; color: #ffe699 !important; }
+        [data-theme="dark"] #content-mibgas { background: #221e10; border-left-color: #5c4a10; }
+
+        .st-opcoes { background: #D1C4E9 !important; color: #4a148c !important; }
+        #content-opcoes { background: #F3E5F5; border-left: 4px solid #D1C4E9; }
+        [data-theme="dark"] .st-opcoes { background: #4a1d6e !important; color: #d1c4e9 !important; }
+        [data-theme="dark"] #content-opcoes { background: #1a1030; border-left-color: #4a1d6e; }
+
+        .st-meu { background: #FF9F9F !important; color: #7f1d1d !important; }
+        #content-meu { background: #fef2f2; border-left: 4px solid #FF9F9F; }
+        [data-theme="dark"] .st-meu { background: #6b2a2a !important; color: #ffc0c0 !important; }
+        [data-theme="dark"] #content-meu { background: #271414; border-left-color: #6b2a2a; }
+
+        .st-pers { background: #A3D1C2 !important; color: #134e4a !important; }
+        #content-pers { background: #f0fdf9; border-left: 4px solid #A3D1C2; }
+        [data-theme="dark"] .st-pers { background: #2a5c4a !important; color: #b8e8d6 !important; }
+        [data-theme="dark"] #content-pers { background: #142420; border-left-color: #2a5c4a; }
+
+        .st-beneficios { background: #BBF7D0 !important; color: #14532d !important; }
+        #content-beneficios { background: #f0fdf4; border-left: 4px solid #BBF7D0; }
+        [data-theme="dark"] .st-beneficios { background: #166534 !important; color: #bbf7d0 !important; }
+        [data-theme="dark"] #content-beneficios { background: #0a2618; border-left-color: #166534; }
+
+        /* Form elements */
+        label { display: block; font-size: 0.78rem; font-weight: 500; color: var(--text-light); margin: 8px 0 3px; }
+        input[type="number"], input[type="date"], select { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; font-family: inherit; background: var(--surface); color: var(--text-main); }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
+        .row { display: flex; gap: 8px; }
+        .row > * { flex: 1; min-width: 0; }
+        .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; cursor: pointer; margin: 6px 0; }
+        .checkbox-label input { accent-color: var(--primary); width: 15px; height: 15px; }
+        .help-text { font-size: 0.72rem; color: var(--text-light); margin-top: 2px; font-style: italic; }
+        .metric-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; text-align: center; margin: 6px 0; }
+        .metric-box .val { font-size: 1.1rem; font-weight: 600; color: var(--text-main); }
+        .metric-box .lbl { font-size: 0.72rem; color: var(--text-light); }
+        .btn-reset { width: 100%; padding: 8px; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; margin-top: 10px; }
+        .btn-reset:hover { filter: brightness(0.9); }
+
+        /* Main content */
+        .main-content { min-width: 0; }
+
+        /* Loader */
+        #loader { text-align: center; padding: 60px 20px; color: var(--text-light); }
+        #loader .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Podium */
+        .podium-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
+        .podium-item { background: var(--surface); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
+        .podium-item.first { order: 2; border: 3px solid #ffd700; }
+        .podium-item.second { order: 1; }
+        .podium-item.third { order: 3; }
+        .podium-medal { font-size: 3rem; margin-bottom: 12px; }
+        .podium-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; }
+        .podium-tariff { font-size: 0.8rem; color: #64748b; margin-bottom: 5px; height: 34px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+        .podium-price { font-size: 2rem; font-weight: 700; color: var(--primary); font-family: 'Roboto Mono', monospace; }
+        .podium-savings { color: var(--success); font-weight: 600; margin-top: 8px; }
+        @media (max-width: 1100px) { .podium-container { grid-template-columns: 1fr; } .podium-item.first, .podium-item.second, .podium-item.third { order: initial; } }
+
+        /* Resumo */
+        #resumo-box { background: #f9f9f9; border: 1px solid #ddd; padding: 14px; border-radius: 8px; margin: 12px 0; font-size: 0.85rem; line-height: 1.6; }
+        #resumo-box b { color: var(--text-main); }
+
+        /* Poupança */
+        #poupanca-msg { margin: 10px 0; font-size: 0.9rem; }
+
+        /* Filters bar */
+        .filters-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; background: var(--surface); padding: 12px; border-radius: 10px; margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .filters-bar > div { flex: 1; min-width: 130px; }
+        .filters-bar label { font-size: 0.72rem; margin-bottom: 2px; }
+        .filters-bar select { font-size: 0.82rem; padding: 6px 8px; }
+        .filters-bar .btn-limpar-filtros { padding: 6px 14px; background: var(--text-light); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.78rem; white-space: nowrap; align-self: end; }
+        .filters-bar .btn-limpar-filtros:hover { background: var(--danger); }
+
+        /* Tabela de resultados */
+        .table-wrapper { background: var(--surface); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-x: auto; border: 1px solid var(--border); margin: 12px 0; }
+        table { width: 100%; border-collapse: separate; border-spacing: 3px 4px; font-size: 0.84rem; table-layout: fixed; min-width: 700px; }
+        th { background: #A6A6A6; color: #000; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 12px; text-align: center; cursor: pointer; user-select: none; white-space: nowrap; position: relative; z-index: 2; font-weight: 600; border-radius: 0; }
+        th:hover { color: #000; background: #8c8c8c; }
+        th .sort-arrow { font-size: 0.6rem; margin-left: 3px; opacity: 0.5; }
+        th.sorted .sort-arrow { opacity: 1; color: var(--primary); }
+        .resizer { position: absolute; right: 0; top: 0; height: 100%; width: 5px; background: rgba(0,0,0,0.05); cursor: col-resize; user-select: none; }
+        .resizer:hover { background: var(--primary); }
+        td { padding: 10px 12px; text-align: center; vertical-align: middle; border-radius: 10px; border: none; }
+        td:first-child { text-align: left; border-radius: 10px; }
+        th:first-child, td:first-child { width: 45%; }
+        tr:hover { background: transparent; }
+        tr:hover td { filter: brightness(0.97); }
+        [data-theme="dark"] tr:hover td { filter: brightness(1.1); }
+        td.cell-fixo, td.cell-index-media, td.cell-meu-tarif, td.cell-perso { text-align: left; max-width: 400px; word-wrap: break-word; padding: 12px 14px; border-radius: 10px; }
+
+        /* Table cell types (electricity sim pattern) */
+        .cell-fixo        { border: 2px solid #d0d0d0 !important; background-color: #ffffff; border-radius: 10px; }
+        .cell-index-media { border: 2px solid #FFE699 !important; background-color: #fffdf5; border-radius: 10px; }
+        .cell-meu-tarif   { border: 2px solid #FF0000 !important; background-color: #fff5f5; border-radius: 10px; }
+        .cell-perso       { border: 2px solid #92D050 !important; background-color: #f9fff2; border-radius: 10px; }
+        [data-theme="dark"] .cell-fixo { background-color: #1e293b !important; border-color: #475569 !important; }
+        [data-theme="dark"] .cell-index-media { background-color: #2a2714 !important; }
+        [data-theme="dark"] .cell-meu-tarif { background-color: #2a1414 !important; }
+        /* Detalhes column */
+        th:last-child, td:last-child { width: 85px; min-width: 85px; max-width: 85px; text-align: center; }
+        [data-theme="dark"] .cell-perso { background-color: #1a2a14 !important; }
+
+        .price-main { font-family: 'Roboto Mono', monospace; font-weight: 700; font-size: 0.95rem; cursor: help; text-align: center; vertical-align: middle; }
+        .price-sub { font-family: 'Roboto Mono', monospace; color: var(--text-light); font-size: 0.82rem; cursor: help; text-align: center; vertical-align: middle; }
+        .tariff-name { cursor: pointer; color: var(--primary); font-weight: 600; text-decoration: none; }
+        .tariff-name:hover { text-decoration: underline; }
+        .tariff-details { font-size: 0.78rem; color: var(--text-light); margin-bottom: 4px; }
+        .tag { padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; display: inline-block; margin-right: 4px; letter-spacing: 0.05em; }
+        .tag.fixo        { background: #d0d0d0; color: #000; }
+        .tag.index-media { background: #FFE699; color: #000; }
+        .tag.meu-tarif   { background: #FF0000; color: #fff; }
+        .tag.perso       { background: #92D050; color: #fff; }
+
+        /* Floating tooltip (electricity sim pattern) */
+        #floating-tooltip { display: none; position: fixed; background: white; color: #333; border: 1px solid #ccc; padding: 10px 14px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.18); min-width: 260px; max-width: 380px; font-size: 0.82rem; z-index: 9999; line-height: 1.6; pointer-events: none; }
+        #floating-tooltip b { display: block; margin-bottom: 3px; }
+        #floating-tooltip .sep { border-top: 1px dashed #ccc; margin: 5px 0; }
+        [data-theme="dark"] #floating-tooltip { background: #334155; color: #e2e8f0; border-color: #475569; }
+
+        /* Tabela count */
+        .table-count { font-size: 0.78rem; color: var(--text-light); margin: 4px 0; }
+
+        /* Legenda */
+        .legenda { display: flex; gap: 14px; flex-wrap: wrap; margin: 10px 0; font-size: 0.78rem; align-items: center; }
+        .legenda-item { display: flex; align-items: center; gap: 5px; }
+        .legenda-cor { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #ccc; }
+
+        /* MIBGAS chart */
+        #mibgas-chart-container { width: 100%; height: 280px; margin: 10px 0; border-radius: 8px; }
+        .chart-toggle { cursor: pointer; color: var(--primary); font-size: 0.82rem; font-weight: 500; margin: 8px 0; display: inline-block; }
+        .chart-toggle:hover { text-decoration: underline; }
+
+        /* Export */
+        .btn-export { padding: 8px 16px; background: var(--success); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; margin: 8px 4px 8px 0; }
+        .btn-export:hover { filter: brightness(0.9); }
+
+        /* Mobile sidebar toggle */
+        .sidebar-close { display: none; }
+        .sidebar-toggle { display: none; }
+        @media (max-width: 1100px) {
+            body { font-size: 0.85rem; }
+            .grid-container { grid-template-columns: 1fr; padding: 0 10px; }
+            .sidebar { 
+                position: fixed; top: 0; left: 0; width: 85vw; max-width: 360px; height: 100vh; max-height: 100vh;
+                border-radius: 0; z-index: 1000; transform: translateX(-100%); 
+                transition: transform 0.3s ease; box-shadow: none; overflow-y: auto;
+            }
+            .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.3); }
+            .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(0,0,0,0.5); z-index: 999; }
+            .sidebar-overlay.active { display: block; }
+            .sidebar-toggle { 
+                display: flex; align-items: center; gap: 8px; background: var(--primary); color: white; 
+                border: none; padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
+                cursor: pointer; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            }
+            .sidebar-toggle:active { transform: scale(0.97); }
+            .sidebar-close { 
+                display: flex; position: absolute; top: 12px; right: 12px; background: none; border: none; 
+                font-size: 1.4rem; color: var(--text-light); cursor: pointer; padding: 4px 8px; z-index: 1001;
+            }
+            .tabs-container { margin-left: 10px; margin-right: 10px; }
+            .filters-bar { padding: 10px; }
+            th, td { padding: 6px 8px; font-size: 0.8rem; }
+        }
+        @media (min-width: 1101px) {
+            .sidebar-toggle { display: none; }
+            .sidebar-close { display: none; }
+            .sidebar-overlay { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <div class="header-title-container">
+            <a href="index.html">
+                <img src="images/Logo_Tiago_Felicia.png" alt="Logótipo Tiago Felícia - Página Inicial" class="logo">
+            </a>
+            <div class="brand-name">Tiago Felícia</div>
+        </div>
+        <p>Simuladores de tarifários de Eletricidade, Gás Natural e Autoconsumo</p>
+    </div>
+</header>
+
+<div id="menu-placeholder"></div>
+
+<main style="max-width: none; margin: 0 auto;">
+
+    <!-- LOADER -->
+    <div id="loader" style="text-align:center; padding:60px 20px;">
+        <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2.5rem; color:var(--primary); margin-bottom:16px;"></i>
+        <p id="loader-msg" style="color:var(--text-light); font-size:0.95rem; margin-top:12px;">A carregar tarifários de gás natural...</p>
+    </div>
+
+    <!-- LOGO + TÍTULO -->
+    <div id="simulador-header" style="padding:30px 20px 20px 20px;" class="hidden">
+        <div style="display:flex; align-items:center; justify-content:center; gap:20px; flex-wrap:wrap; margin-bottom:16px;">
+            <img src="https://huggingface.co/spaces/tiagofelicia/simulador-tarifarios-gas-natural/resolve/main/Logo_Tiago_Felicia.png" alt="Logo Tiago Felícia" style="width:120px; height:auto; flex-shrink:0;" onerror="this.style.display='none'">
+            <h1 style="margin:0; font-size:1.4rem;">🔥 Simulador de Tarifários de Gás Natural 2025 em Portugal | Tiago Felícia</h1>
+        </div>
+        <p style="text-align:center; color:var(--text-light);">
+            Bem-vindo ao simulador de gás natural mais completo de Portugal 😊. Compare tarifários fixos e indexados para encontrar a opção mais económica. Descubra quanto pode poupar na sua fatura de gás.
+        </p>
+    </div>
+
+    <!-- TABS (above sidebar and main) -->
+    <div id="tabs-wrapper" class="tabs-container hidden">
+        <div class="tabs-header">
+            <button class="tab-btn active" onclick="switchTab('quick')">⚡ Simulação Rápida</button>
+            <button class="tab-btn" onclick="switchTab('sim')">🔥 Simulação Completa</button>
+            <button class="tab-btn" onclick="switchTab('faq')">❓ Guia & FAQ</button>
+            <button class="dark-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">
+                <i class="fa-solid fa-moon" id="dark-icon"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- TAB: SIMULAÇÃO RÁPIDA -->
+    <div id="tab-quick" class="">
+        <div class="quick-sim-container" style="padding-top:20px;">
+
+            <!-- Cabeçalho -->
+            <div class="quick-card" style="background:linear-gradient(135deg, #d97706 0%, #b45309 100%); color:white; text-align:center; padding:16px;">
+                <h1 style="margin:0 0 4px 0; font-size:1.5rem; color:white !important;">🔥 Simulação Rápida — Gás Natural</h1>
+                <p style="margin:0; opacity:0.9; font-size:0.85rem;">Descubra quanto pode poupar em segundos</p>
+            </div>
+
+            <!-- 1. PREÇO / CONSUMO -->
+            <div class="quick-card">
+                <div class="quick-title">💶 Quanto paga por mês?</div>
+                <div class="price-grid">
+                    <div class="price-button selected" onclick="qSelectPrice(15)" id="qprice-15">
+                        <div style="font-size:1.2rem;">15€</div>
+                        <div style="font-size:0.65rem; opacity:0.7;">~135 kWh | Escalão 1</div>
+                    </div>
+                    <div class="price-button" onclick="qSelectPrice(35)" id="qprice-35">
+                        <div style="font-size:1.2rem;">35€</div>
+                        <div style="font-size:0.65rem; opacity:0.7;">~300 kWh | Escalão 2</div>
+                    </div>
+                    <div class="price-button" onclick="qSelectPrice(60)" id="qprice-60">
+                        <div style="font-size:1.2rem;">60€</div>
+                        <div style="font-size:0.65rem; opacity:0.7;">~600 kWh | Escalão 3</div>
+                    </div>
+                    <div class="price-button" onclick="qSelectPrice(100)" id="qprice-100">
+                        <div style="font-size:1.2rem;">100€</div>
+                        <div style="font-size:0.65rem; opacity:0.7;">~1000 kWh | Escalão 4</div>
+                    </div>
+                </div>
+
+                <p style="text-align:center; color:var(--text-light); margin:10px 0 8px 0; font-size:0.85rem;">ou</p>
+
+                <div class="quick-title">⚡ Quanto consome por mês?</div>
+                <input type="number" id="quick-kwh" placeholder="135" value="135" min="0" oninput="qAutoCalc()" style="width:100%; font-size:1rem; text-align:center; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text-main);">
+                <div id="alerta-quick-negativo" class="hidden" style="margin-top:4px;padding:5px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:0.76rem;color:#dc2626;text-align:center;">⚠️ Consumos negativos são considerados 0.</div>
+                <div style="text-align:center; margin-top:4px; color:var(--text-light); font-size:0.75rem;">kWh/mês</div>
+            </div>
+
+            <!-- 2. ESCALÃO -->
+            <div class="quick-card">
+                <div class="quick-title">📊 Qual é o seu escalão?</div>
+                <div class="price-grid" style="grid-template-columns:repeat(4,1fr);">
+                    <div class="power-button selected" onclick="qSelectEscalao(1)" id="qesc-1">E1</div>
+                    <div class="power-button" onclick="qSelectEscalao(2)" id="qesc-2">E2</div>
+                    <div class="power-button" onclick="qSelectEscalao(3)" id="qesc-3">E3</div>
+                    <div class="power-button" onclick="qSelectEscalao(4)" id="qesc-4">E4</div>
+                </div>
+                <div style="text-align:center; margin-top:4px; color:var(--text-light); font-size:0.75rem;">Escalão de consumo (encontra na sua fatura)</div>
+            </div>
+
+            <!-- 3. O QUE PROCURA -->
+            <div class="quick-card">
+                <div class="quick-title">🎯 O que procura?</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <div class="quick-option selected" onclick="qSelectType('all')" id="qtariff-all">
+                        <input type="radio" name="qtariff" checked> A mais barata agora (Todas as opções)
+                    </div>
+                    <div class="quick-option" onclick="qSelectType('fixed')" id="qtariff-fixed">
+                        <input type="radio" name="qtariff"> Só Preço Fixo (Sem oscilações)
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. NÃO MOSTRAR -->
+            <div class="quick-card">
+                <div style="cursor:pointer; padding:8px; background:#f1f5f9; border-radius:6px; display:flex; justify-content:space-between; align-items:center;" onclick="toggleQuickProviders()">
+                    <span style="font-weight:600; font-size:0.9rem;">⚙️ Não mostrar estes comercializadores:</span>
+                    <i class="fa-solid fa-chevron-down" id="quick-providers-icon"></i>
+                </div>
+                <div class="hidden" id="quick-providers-content" style="margin-top:10px;">
+                    <div id="quick-provider-filters" style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px; font-size:0.8rem;"></div>
+                </div>
+            </div>
+
+            <!-- 5. RESULTADOS - PÓDIO -->
+            <div id="quick-results">
+                <div class="quick-card">
+                    <h2 style="text-align:center; margin-bottom:16px; font-size:1.2rem;">🏆 Melhores Soluções</h2>
+                    <div class="podium-container" id="quick-podium">
+                        <div class="podium-item" style="opacity:0.3;"><div class="podium-medal">🥇</div><div class="podium-name">...</div><div class="podium-price">-</div></div>
+                        <div class="podium-item" style="opacity:0.3;"><div class="podium-medal">🥈</div><div class="podium-name">...</div><div class="podium-price">-</div></div>
+                        <div class="podium-item" style="opacity:0.3;"><div class="podium-medal">🥉</div><div class="podium-name">...</div><div class="podium-price">-</div></div>
+                    </div>
+
+                    <p style="text-align:center; color:var(--text-light); margin:12px 0 8px 0; font-size:0.85rem;">
+                        Quer ver mais detalhes ou todos os comercializadores?
+                    </p>
+                    <button style="width:100%; padding:12px; background:white; border:2px solid var(--primary); color:var(--primary); border-radius:6px; font-weight:600; cursor:pointer; font-size:0.9rem;" onclick="switchTab('sim')">
+                        📋 Ver Tabela Completa
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TAB: SIMULADOR -->
+    <div id="tab-sim" class="hidden">
+        <div class="grid-container">
+            <!-- Sidebar overlay + panel -->
+            <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+            <aside class="sidebar" id="sidebar">
+                <button class="sidebar-close" onclick="toggleSidebar()" aria-label="Fechar">&times;</button>
+                <h2 style="color:var(--primary); margin-top:0; font-size:1.2rem; display:flex; align-items:center; gap:10px;">
+                    <i class="fa-solid fa-fire-flame-curved"></i> Simulador Tiago Felícia <span style="font-size:0.4em; background:var(--text-main); color:var(--surface); padding:2px 4px; border-radius:4px;">v2</span>
+                    <button class="btn-cenarios" onclick="abrirModalCenarios()" title="Cenários Guardados"><i class="fa-solid fa-floppy-disk"></i></button>
+                </h2>
+
+                <!-- ESCALÃO + MUNICÍPIO -->
+        <div class="section-title st-escalao" onclick="toggleSection('escalao')">
+            <span>🔥 Escalão e Município</span><i class="fas fa-chevron-down" id="icon-escalao"></i>
+        </div>
+        <div class="section-content" id="content-escalao">
+            <label for="sel_escalao">Escalão de Consumo <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'Escalão de Consumo','Faixa de consumo anual (em m³) que determina as tarifas de acesso. Encontra esta informação na sua fatura de gás.')" onmouseleave="hideTooltipNome()"></i></label>
+            <select id="sel_escalao" onchange="onEscalaoChange()">
+                <option value="1" selected>Escalão 1 (até 220 m³/ano)</option>
+                <option value="2">Escalão 2 (221 a 500 m³/ano)</option>
+                <option value="3">Escalão 3 (501 a 1.000 m³/ano)</option>
+                <option value="4">Escalão 4 (1.001 a 10.000 m³/ano)</option>
+            </select>
+            <label for="sel_municipio">⚠️ Município (para TOS) <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'Município','Essencial para calcular a Taxa de Ocupação do Subsolo (TOS) e identificar o Comercializador de Último Recurso (CUR).')" onmouseleave="hideTooltipNome()"></i></label>
+            <select id="sel_municipio" onchange="calcular()"></select>
+            <div class="help-text">Essencial para calcular a Taxa de Ocupação do Subsolo.</div>
+            <div class="metric-box" id="cur-info">
+                <div class="lbl">Comercializador de Último Recurso</div>
+                <div class="val" id="cur-nome">—</div>
+            </div>
+        </div>
+
+        <!-- CONSUMO -->
+        <div class="section-title st-consumo" onclick="toggleSection('consumo')">
+            <span>⚡ Consumo</span><i class="fas fa-chevron-down" id="icon-consumo"></i>
+        </div>
+        <div class="section-content" id="content-consumo">
+            <div style="margin-bottom:8px;">
+                <label class="checkbox-label"><input type="radio" name="input_mode" value="kwh" checked onchange="toggleInputMode()"> Consumo em kWh</label>
+                <label class="checkbox-label"><input type="radio" name="input_mode" value="m3" onchange="toggleInputMode()"> Consumo em m³</label>
+            </div>
+            <div id="input-kwh">
+                <label for="consumo_kwh">Consumo (kWh) <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'Consumo','Insira o consumo em kWh para o período. Pode converter de m³ usando o PCS da fatura.')" onmouseleave="hideTooltipNome()"></i></label>
+                <input type="number" id="consumo_kwh" value="135" min="0" step="10" oninput="calcular()">
+                <div id="alerta-consumo-negativo" class="hidden" style="margin-top:4px;padding:5px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:0.76rem;color:#dc2626;">⚠️ Consumos negativos são considerados 0.</div>
+            </div>
+            <div id="input-m3" class="hidden">
+                <div class="row">
+                    <div>
+                        <label for="consumo_m3">Consumo (m³)</label>
+                        <input type="number" id="consumo_m3" value="12" min="0" step="1" oninput="updateKwhFromM3()">
+                    </div>
+                    <div>
+                        <label for="fator_pcs">PCS (conversão)</label>
+                        <input type="number" id="fator_pcs" value="11.25" min="9" max="13" step="0.01" oninput="updateKwhFromM3()">
+                    </div>
+                </div>
+                <div class="help-text">PCS converte m³ → kWh. Está na sua fatura.</div>
+            </div>
+            <div class="metric-box">
+                <div class="lbl">Consumo diário médio</div>
+                <div class="val" id="consumo-diario-val">—</div>
+            </div>
+        </div>
+
+        <!-- MEU TARIFÁRIO -->
+        <div class="section-title st-meu" onclick="toggleSection('meu')">
+            <span>🧾 O Meu Tarifário <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;font-size:0.7rem;" onmouseenter="showTooltipNome(event,'O Meu Tarifário','Preencha os valores do seu tarifário atual para comparar com as ofertas do mercado. Atenção às flags TAR incluída.')" onmouseleave="hideTooltipNome()"></i></span><i class="fas fa-chevron-down" id="icon-meu"></i>
+        </div>
+        <div class="section-content collapsed" id="content-meu">
+            <label class="checkbox-label"><input type="checkbox" id="chk_meu_ativo" onchange="calcular()"> <b>Ativar O Meu Tarifário</b></label>
+            <div id="meu-campos" class="hidden">
+                <div class="row">
+                    <div><label>Energia (€/kWh)</label><input type="number" id="meu_energia" value="0.06470" min="0" step="0.001" oninput="calcular()"></div>
+                    <div><label>Fixo (€/dia)</label><input type="number" id="meu_fixo" value="0.08970" min="0" step="0.001" oninput="calcular()"></div>
+                </div>
+                <div class="row">
+                    <label class="checkbox-label"><input type="checkbox" id="meu_tar_energia" checked onchange="calcular()"> TAR incl. Energia</label>
+                    <label class="checkbox-label"><input type="checkbox" id="meu_tar_fixo" checked onchange="calcular()"> TAR incl. Fixo</label>
+                </div>
+                <div class="row" style="margin-top:6px;">
+                    <div><label>Desc. Energia (%)</label><input type="number" id="meu_desc_energia_perc" value="0" min="0" max="100" step="0.1" oninput="calcular()"></div>
+                    <div><label>Desc. Fixo (%)</label><input type="number" id="meu_desc_fixo_perc" value="0" min="0" max="100" step="0.1" oninput="calcular()"></div>
+                </div>
+                <div class="row">
+                    <div><label>Desc. Fatura (€)</label><input type="number" id="meu_desc_fatura" value="0" min="0" step="0.01" oninput="calcular()"></div>
+                    <div><label>Acréscimo (€)</label><input type="number" id="meu_acres_fatura" value="0" min="0" step="0.01" oninput="calcular()"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERSONALIZADO -->
+        <div class="section-title st-pers" onclick="toggleSection('pers')">
+            <span>🔧 Tarifário Personalizado <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;font-size:0.7rem;" onmouseenter="showTooltipNome(event,'Tarifário Personalizado','Crie um tarifário personalizado para comparar. Não inclui descontos percentuais.')" onmouseleave="hideTooltipNome()"></i></span><i class="fas fa-chevron-down" id="icon-pers"></i>
+        </div>
+        <div class="section-content collapsed" id="content-pers">
+            <label class="checkbox-label"><input type="checkbox" id="chk_pers_ativo" onchange="calcular()"> <b>Ativar Personalizado</b></label>
+            <div id="pers-campos" class="hidden">
+                <div class="row">
+                    <div><label>Energia (€/kWh)</label><input type="number" id="pers_energia" value="0.06470" min="0" step="0.001" oninput="calcular()"></div>
+                    <div><label>Fixo (€/dia)</label><input type="number" id="pers_fixo" value="0.08970" min="0" step="0.001" oninput="calcular()"></div>
+                </div>
+                <div class="row">
+                    <label class="checkbox-label"><input type="checkbox" id="pers_tar_energia" checked onchange="calcular()"> TAR incl. Energia</label>
+                    <label class="checkbox-label"><input type="checkbox" id="pers_tar_fixo" checked onchange="calcular()"> TAR incl. Fixo</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- BENEFÍCIOS SOCIAIS -->
+        <div class="section-title st-beneficios" onclick="toggleSection('beneficios')">
+            <span>🛡️ Benefícios Sociais <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;font-size:0.7rem;" onmouseenter="showTooltipNome(event,'Benefícios Sociais','A Tarifa Social reduz a TAR e isenta o ISP. Disponível apenas para Escalões 1 e 2.')" onmouseleave="hideTooltipNome()"></i></span><i class="fas fa-chevron-down" id="icon-beneficios"></i>
+        </div>
+        <div class="section-content collapsed" id="content-beneficios">
+            <div id="ts-section">
+                <label class="checkbox-label"><input type="checkbox" id="chk_ts" onchange="calcular()"> Tarifa Social de Gás</label>
+                <div class="help-text">Aplica-se apenas aos Escalões 1 e 2.</div>
+            </div>
+            <div id="ts-unavailable" class="hidden" style="font-size:0.8rem;color:var(--text-light);">Tarifa Social disponível apenas para Escalões 1 e 2.</div>
+        </div>
+
+        <!-- OPÇÕES ADICIONAIS -->
+        <div class="section-title st-opcoes" onclick="toggleSection('opcoes')">
+            <span>⚙️ Opções Adicionais <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;font-size:0.7rem;" onmouseenter="showTooltipNome(event,'Opções Adicionais','ISP (Imposto sobre Produtos Petrolíferos) e Quota ACP para tarifários Goldenergy/ACP.')" onmouseleave="hideTooltipNome()"></i></span><i class="fas fa-chevron-down" id="icon-opcoes"></i>
+        </div>
+        <div class="section-content collapsed" id="content-opcoes">
+            <label for="isp_input">ISP Gás (€/kWh) <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'ISP Gás','Imposto sobre Produtos Petrolíferos aplicado ao gás natural. Isento com Tarifa Social.')" onmouseleave="hideTooltipNome()"></i></label>
+            <input type="number" id="isp_input" value="0" min="0" step="0.0001" oninput="calcular()">
+            <label class="checkbox-label"><input type="checkbox" id="chk_acp" checked onchange="calcular()"> Incluir Quota ACP (4,90€/mês)</label>
+        </div>
+
+        <!-- DATAS DE FATURAÇÃO -->
+        <div class="section-title st-datas" onclick="toggleSection('datas')">
+            <span>📅 Datas de Faturação <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;font-size:0.7rem;" onmouseenter="showTooltipNome(event,'Datas de Faturação','Defina o período de faturação. Influencia o cálculo do MIBGAS e o número de dias.')" onmouseleave="hideTooltipNome()"></i></span><i class="fas fa-chevron-down" id="icon-datas"></i>
+        </div>
+        <div class="section-content" id="content-datas">
+            <div class="row">
+                <div><label for="d_inicio">Data Início</label><input type="date" id="d_inicio" onchange="onDatasChange()"></div>
+                <div><label for="d_fim">Data Fim</label><input type="date" id="d_fim" onchange="onDatasChange()"></div>
+            </div>
+            <div class="metric-box">
+                <div class="lbl">Dias do período</div>
+                <div class="val" id="dias-val">—</div>
+            </div>
+        </div>
+
+        <!-- MÉDIA MIBGAS / FUTUROS (always visible, no toggle) -->
+        <div class="section-title st-mibgas" style="cursor:default;">
+            <span>📊 Média MIBGAS / Futuros</span>
+        </div>
+        <div class="section-content" id="content-mibgas">
+            <label for="mibgas_input">MIBGAS (€/MWh) <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'MIBGAS','Preço médio do mercado grossista de gás natural. Calculado automaticamente para o período. Pode ajustar manualmente.')" onmouseleave="hideTooltipNome()"></i></label>
+            <input type="number" id="mibgas_input" value="30" min="0" step="0.5" oninput="calcular()">
+            <div class="help-text" id="mibgas-help">Média calculada para o período selecionado.</div>
+            <div id="mibgas-alerta" class="hidden" style="margin-top:6px;padding:6px 8px;border-radius:6px;font-size:0.78rem;"></div>
+        </div>
+
+        <button class="btn-reset" onclick="reiniciar()">🧹 Limpar e Reiniciar</button>
+    </aside>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content">
+            <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()"><i class="fa-solid fa-sliders"></i> Parâmetros</button>
+            <div id="resultados" class="hidden">
+
+                <!-- 1. FILTROS (first) -->
+                <div class="filters-bar">
+                    <div>
+                        <label>Segmento <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'Segmento','Escolha o segmento: Residencial (Doméstico) ou Empresarial (Não Doméstico).')" onmouseleave="hideTooltipNome()"></i></label>
+                        <select id="filtro_segmento" onchange="calcular()">
+                            <option value="Residencial" selected>Residencial</option>
+                            <option value="Empresarial">Empresarial</option>
+                            <option value="Ambos">Ambos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Faturação <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'Faturação','Escolha o tipo de faturação pretendido.')" onmouseleave="hideTooltipNome()"></i></label>
+                        <select id="filtro_faturacao" onchange="calcular()">
+                            <option value="">Todas</option>
+                            <option value="Fatura eletrónica">Eletrónica</option>
+                            <option value="Fatura em papel">Papel</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Pagamento <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'Pagamento','Escolha o método de pagamento.')" onmouseleave="hideTooltipNome()"></i></label>
+                        <select id="filtro_pagamento" onchange="calcular()">
+                            <option value="">Todos</option>
+                            <option value="Débito Direto">Débito Direto</option>
+                            <option value="Multibanco">Multibanco</option>
+                            <option value="Numerário/Payshop/CTT">Outros (Num/CTT)</option>
+                        </select>
+                    </div>
+                    <div style="flex:2;">
+                        <label>Tipo Tarifário <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'Tipo Tarifário','Fixo: Preço de energia constante. Indexado: Preço baseado no mercado grossista MIBGAS.')" onmouseleave="hideTooltipNome()"></i></label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <label class="checkbox-label" style="margin:0;"><input type="checkbox" class="chk-tipo" value="Fixo" checked onchange="calcular()"> Fixo</label>
+                            <label class="checkbox-label" style="margin:0;"><input type="checkbox" class="chk-tipo" value="Indexado" checked onchange="calcular()"> Indexado</label>
+                        </div>
+                    </div>
+                    <div style="flex:2;">
+                        <label>Pesquisar Comercializador/Tarifário <i class="fa-solid fa-circle-question" style="color:var(--text-light);cursor:help;margin-left:4px;" onmouseenter="showTooltipNome(event,'Pesquisar','Digite o nome do comercializador ou tarifário que deseja filtrar.')" onmouseleave="hideTooltipNome()"></i></label>
+                        <input type="text" id="f_procura" placeholder="Ex: EDP, Galp, Endesa..." oninput="aplicarFiltrosEReordenar()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;background:var(--surface);color:var(--text-main);">
+                    </div>
+                </div>
+
+                <!-- Provider exclusion -->
+                <div style="background:var(--surface); padding:12px 16px; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.1); margin-bottom:16px;">
+                    <div style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleProviderFilter()">
+                        <label style="font-weight:600; cursor:pointer;"><i class="fa-solid fa-filter"></i> Não mostrar estes comercializadores:</label>
+                        <i class="fa-solid fa-chevron-down" id="icon-provider-filter"></i>
+                    </div>
+                    <div id="content-provider-filter" class="collapsed" style="margin-top:12px;">
+                        <div id="provider-filters" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px;"></div>
+                    </div>
+                </div>
+
+                <!-- 2. MIBGAS Chart -->
+                <div style="margin:12px 0;">
+                    <div class="chart-toggle" onclick="toggleMibgasChart()"><i class="fas fa-chart-line"></i> Ver/Ocultar Gráfico MIBGAS</div>
+                    <div id="mibgas-chart-wrapper" class="hidden">
+                        <div id="mibgas-chart-container"></div>
+                    </div>
+                </div>
+
+                <!-- 3. Resumo -->
+                <div id="resumo-box"></div>
+
+                <!-- 4. Title + Export buttons -->
+                <div style="margin:15px 0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <h4 id="titulo-tabela" style="margin:0; color:var(--text-main);">Tiago Felícia - Tarifários de Gás Natural</h4>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button id="btn-partilhar" onclick="gerarLinkPartilha()" style="padding:6px 14px; border:1px solid var(--primary); background:white; color:var(--primary); border-radius:8px; cursor:pointer; font-size:0.8rem; font-weight:600; transition:all 0.2s;" onmouseover="this.style.background='var(--primary)';this.style.color='white'" onmouseout="this.style.background=_isDark()?'#1e293b':'white';this.style.color='var(--primary)'">
+                                <i class="fa-solid fa-link"></i> Partilhar Simulação
+                            </button>
+                            <button id="btn-exportar" onclick="exportarExcel()" style="padding:6px 14px; border:1px solid #16a34a; background:white; color:#16a34a; border-radius:8px; cursor:pointer; font-size:0.8rem; font-weight:600; transition:all 0.2s;" onmouseover="this.style.background='#16a34a';this.style.color='white'" onmouseout="this.style.background=_isDark()?'#1e293b':'white';this.style.color='#16a34a'">
+                                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                            </button>
+                            <button id="btn-pdf" onclick="exportarPDF()" style="padding:6px 14px; border:1px solid #dc2626; background:white; color:#dc2626; border-radius:8px; cursor:pointer; font-size:0.8rem; font-weight:600; transition:all 0.2s;" onmouseover="this.style.background='#dc2626';this.style.color='white'" onmouseout="this.style.background=_isDark()?'#1e293b':'white';this.style.color='#dc2626'">
+                                <i class="fa-solid fa-file-pdf"></i> Relatório PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Poupança -->
+                <div id="poupanca-msg"></div>
+
+                <!-- 6. Legenda + count + Tabela -->
+                <div class="legenda">
+                    <div class="legenda-item" id="leg-fixo"><div class="legenda-cor" style="background:#f0f0f0;border-color:#ccc;"></div> Fixo</div>
+                    <div class="legenda-item" id="leg-index"><div class="legenda-cor" style="background:#FFE699;"></div> Indexado</div>
+                    <div class="legenda-item hidden" id="leg-meu"><div class="legenda-cor" style="background:#FF0000;"></div> O Meu Tarifário</div>
+                    <div class="legenda-item hidden" id="leg-pers"><div class="legenda-cor" style="background:#92D050;"></div> Personalizado</div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px;">
+                    <div class="table-count" id="tbl-count" style="font-weight:600; color:var(--text-light);"></div>
+                    <div style="font-size:0.75rem; color:var(--text-light);">Total com Valores Finais (componentes, taxas e impostos). Energia e Fixo sem IVA.</div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="tbl-resultados">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable(0)" data-col="0" style="position:relative;">Tarifário <span class="sort-arrow">▼</span></th>
+                                <th onclick="sortTable(1)" data-col="1" class="sorted" style="position:relative;">Total (€) <span class="sort-arrow">▲</span></th>
+                                <th onclick="sortTable(2)" data-col="2" style="position:relative;">Energia (€/kWh) <span class="sort-arrow">▼</span></th>
+                                <th onclick="sortTable(3)" data-col="3" style="position:relative;">Fixo (€/dia) <span class="sort-arrow">▼</span></th>
+                                <th data-col="4" style="position:relative;width:85px;min-width:85px;max-width:85px;">Detalhes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- 7. Podium (after table, with spacing) -->
+                <div id="podium" style="margin-top:40px;"></div>
+
+                <!-- SUPPORT SECTION -->
+                <div id="support-section" style="margin-top:40px;padding-top:20px;border-top:1px solid var(--border);">
+                    <h3 style="color:var(--text-main);margin-bottom:12px;">💖 Apoie este Projeto</h3>
+                    <p style="color:var(--text-main);margin-bottom:16px;line-height:1.6;">Se quiser apoiar a manutenção do site e o desenvolvimento contínuo deste simulador:</p>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div style="font-size:1rem;">☕ <a href="https://buymeacoffee.com/tiagofelicia" target="_blank" style="color:var(--primary);font-weight:600;text-decoration:none;">Compre-me um café em BuyMeACoffee</a></div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="color:var(--text-main);">ou através do botão PayPal:</span>
+                            <form action="https://www.paypal.com/donate" method="post" target="_blank" style="display:inline-block;margin:0;">
+                                <input type="hidden" name="hosted_button_id" value="W6KZHVL53VFJC">
+                                <input type="image" src="https://www.paypalobjects.com/pt_PT/PT/i/btn/btn_donate_SM.gif" border="0" name="submit" title="PayPal" alt="PayPal" style="vertical-align:middle;">
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- close resultados -->
+        </div> <!-- close main-content -->
+    </div> <!-- close grid-container -->
+    </div> <!-- close tab-sim -->
+
+    <!-- TAB: FAQ -->
+    <div id="tab-faq" class="hidden">
+        <div style="max-width:900px;margin:0 auto;padding:20px 20px;">
+            <!-- Datas Referência -->
+            <div style="background:var(--bg);border-left:4px solid var(--primary);padding:12px 16px;border-radius:4px;margin-bottom:20px;font-size:0.85rem;">
+                <b>📅 Datas de Referência:</b><br>
+                <span id="ref-mibgas-date">Valores MIBGAS (SPOT) atualizados até: a carregar...</span>
+            </div>
+            <h2 style="margin-top:0;">🚀 Guia Rápido</h2>
+            <ol style="line-height:2;">
+                <li><b>Escalão</b> — Selecione o seu escalão de consumo (encontra-o na fatura).</li>
+                <li><b>Município</b> — Essencial para calcular a TOS (Taxa de Ocupação do Subsolo).</li>
+                <li><b>Consumo</b> — Insira em kWh ou em m³ (com o PCS da fatura).</li>
+                <li><b>Período</b> — Defina datas de início e fim para a simulação.</li>
+                <li><b>MIBGAS</b> — Preço médio do mercado grossista. É calculado automaticamente.</li>
+                <li><b>O Meu Tarifário</b> — Compare o seu tarifário atual com as ofertas do mercado.</li>
+            </ol>
+            <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+            <h2>❓ Perguntas Frequentes</h2>
+            <details style="margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><summary style="padding:12px;cursor:pointer;font-weight:500;background:var(--bg);">O que está incluído no "Total (€)"?</summary><div style="padding:12px 16px;font-size:0.88rem;line-height:1.7;">É a fatura final estimada: Energia + Fixo + ISP + TOS + IVA (6% e 23%) + Descontos/Acréscimos. Passe o rato sobre o valor para ver a decomposição completa.</div></details>
+            <details style="margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><summary style="padding:12px;cursor:pointer;font-weight:500;background:var(--bg);">O que é um tarifário indexado de gás?</summary><div style="padding:12px 16px;font-size:0.88rem;line-height:1.7;">Tem preço baseado no mercado grossista MIBGAS. Pode poupar quando os preços estão baixos, mas há risco se subirem.</div></details>
+            <details style="margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><summary style="padding:12px;cursor:pointer;font-weight:500;background:var(--bg);">O que é o Escalão de Consumo?</summary><div style="padding:12px 16px;font-size:0.88rem;line-height:1.7;">Faixa de consumo anual (em m³) que determina as tarifas. Existem 4 escalões. Encontra o seu na fatura.</div></details>
+            <details style="margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><summary style="padding:12px;cursor:pointer;font-weight:500;background:var(--bg);">O que são as TAR no gás?</summary><div style="padding:12px 16px;font-size:0.88rem;line-height:1.7;">Tarifas de Acesso às Redes — pagam pelas infraestruturas. São definidas pela ERSE.</div></details>
+            <details style="margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><summary style="padding:12px;cursor:pointer;font-weight:500;background:var(--bg);">O que é o PCS?</summary><div style="padding:12px 16px;font-size:0.88rem;line-height:1.7;">Poder Calorífico Superior — converte m³ em kWh. Está na sua fatura.</div></details>
+            <details style="margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><summary style="padding:12px;cursor:pointer;font-weight:500;background:var(--bg);">O que é a TOS?</summary><div style="padding:12px 16px;font-size:0.88rem;line-height:1.7;">Taxa de Ocupação do Subsolo — taxa municipal pelo uso do subsolo para as condutas de gás.</div></details>
+            <details style="margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><summary style="padding:12px;cursor:pointer;font-weight:500;background:var(--bg);">Como é tratado o desconto ACP?</summary><div style="padding:12px 16px;font-size:0.88rem;line-height:1.7;">ACP: inclui a quota mensal (4,90€/mês) no custo total dos tarifários Goldenergy/ACP. Pode ativar/desativar em "Opções Adicionais".</div></details>
+            <details style="margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;"><summary style="padding:12px;cursor:pointer;font-weight:500;background:var(--bg);">Com que frequência são atualizados os dados?</summary><div style="padding:12px 16px;font-size:0.88rem;line-height:1.7;">Regularmente para refletir alterações nos preçários e variações do MIBGAS.</div></details>
+        </div>
+    </div>
+
+</main>
+
+<!-- MODAL CENÁRIOS -->
+<div class="modal-overlay" id="modal-cenarios">
+    <div class="modal-box">
+        <h3><i class="fa-solid fa-floppy-disk" style="color:var(--primary); margin-right:8px;"></i>Cenários Guardados</h3>
+        <div class="save-input-row">
+            <input type="text" id="input-nome-cenario" placeholder="Nome do cenário..." maxlength="40">
+            <button class="btn-save" onclick="guardarCenario()"><i class="fa-solid fa-plus" style="margin-right:4px;"></i> Guardar</button>
+        </div>
+        <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; color:#64748b; margin:6px 0 10px 2px; cursor:pointer;">
+            <input type="checkbox" id="chk-guardar-datas" checked>
+            <span>Guardar também as datas de simulação</span>
+        </label>
+        <div id="lista-cenarios"></div>
+        <button class="modal-close" onclick="fecharModalCenarios()">Fechar</button>
+    </div>
+</div>
+
+<!-- WATERMARK FOOTER -->
+<div id="watermark-footer" style="margin-top:40px; padding:20px; background:#f8fafc; border-top:3px solid #d97706; text-align:center;">
+    <div style="max-width:800px; margin:0 auto;">
+        <p style="font-size:0.95rem; color:#0f172a; margin-bottom:10px;" class="wm-title">
+            <strong>Simulador de Tarifários de Gás Natural | Tiago Felícia</strong>
+        </p>
+        <p style="font-size:0.85rem; color:#64748b; margin-bottom:8px;" class="wm-sub">
+            Desenvolvido por <a href="https://www.tiagofelicia.pt" style="color:#d97706; font-weight:500;" class="wm-link">Tiago Felícia</a>
+        </p>
+        <p style="font-size:0.75rem; color:#94a3b8;" class="wm-copy">
+            © 2024-2026 Tiago Felícia. Todos os direitos reservados.<br>
+            <i class="fa-solid fa-shield-halved"></i>
+            Versão oficial disponível apenas em 
+            <strong class="wm-link" style="color:#d97706;">www.tiagofelicia.pt</strong>
+        </p>
+    </div>
+</div>
+
+<div id="footer-placeholder"></div>
+
+<script src="theme.js"></script>
+<script>
+// === Carregar menu.html e footer.html do site ===
+(function() {
+    fetch('menu.html').then(r => r.ok ? r.text() : '').then(html => { if(html) document.getElementById('menu-placeholder').innerHTML = html; }).catch(() => {});
+    fetch('footer.html').then(r => r.ok ? r.text() : '').then(html => { if(html) document.getElementById('footer-placeholder').innerHTML = html; }).catch(() => {});
+})();
+</script>
+
+<!-- Floating Tooltip -->
+<div id="floating-tooltip"></div>
+
+<script>
+    
+let DATA={tarifarios:[],municipios:[],mibgas:[],constantes:{},info:{}},RESULTADOS_COMPLETOS=[],SORT_COL=1,SORT_ASC=!0;const EXCEL_URL="https://huggingface.co/spaces/tiagofelicia/simulador-tarifarios-gas-natural/resolve/main/Tarifarios_%F0%9F%94%A5_Gas_Natural_Tiago_Felicia.xlsx";function _isDark(){return"dark"===document.documentElement.getAttribute("data-theme")}function toggleDarkMode(){const e=document.documentElement,t=_isDark(),o=t?"light":"dark";e.setAttribute("data-theme",o),document.getElementById("dark-icon").className=t?"fa-solid fa-moon":"fa-solid fa-sun",localStorage.setItem("theme_site",o),document.dispatchEvent(new Event("themeChanged"))}function toggleSection(e){const t=document.getElementById("content-"+e);t.classList.toggle("collapsed");const o=document.getElementById("icon-"+e);o&&(o.className=t.classList.contains("collapsed")?"fas fa-chevron-right":"fas fa-chevron-down")}function toggleSidebar(){const e=document.getElementById("sidebar"),t=document.getElementById("sidebar-overlay");e.classList.toggle("open"),t.classList.toggle("active")}function switchTab(e){document.getElementById("tab-quick").classList.toggle("hidden","quick"!==e),document.getElementById("tab-sim").classList.toggle("hidden","sim"!==e),document.getElementById("tab-faq").classList.toggle("hidden","faq"!==e),document.querySelectorAll(".tab-btn").forEach(e=>{e.classList.contains("dark-toggle")||e.classList.remove("active")}),document.querySelectorAll(".tab-btn:not(.dark-toggle)").forEach(t=>{("quick"===e&&t.textContent.includes("Rápida")||"sim"===e&&t.textContent.includes("Completa")||"faq"===e&&t.textContent.includes("FAQ"))&&t.classList.add("active")}),"sim"===e&&calcular()}function toggleInputMode(){const e=document.querySelector('input[name="input_mode"]:checked').value;document.getElementById("input-kwh").classList.toggle("hidden","kwh"!==e),document.getElementById("input-m3").classList.toggle("hidden","m3"!==e),"m3"===e?updateKwhFromM3():calcular()}function updateKwhFromM3(){const e=parseFloat(document.getElementById("consumo_m3").value)||0,t=parseFloat(document.getElementById("fator_pcs").value)||11.25;document.getElementById("consumo_kwh").value=Math.round(e*t),calcular()}function toggleMibgasChart(){const e=document.getElementById("mibgas-chart-wrapper");e.classList.toggle("hidden"),e.classList.contains("hidden")||gerarGraficoMibgas()}function C(e){return parseFloat(DATA.constantes[e])||0}async function carregarDados(){try{const e=await fetch(EXCEL_URL),t=await e.arrayBuffer();for(;"undefined"==typeof XLSX;)await new Promise(e=>setTimeout(e,100));const o=XLSX.read(t,{type:"array",cellDates:!0}),a=XLSX.utils.sheet_to_json(o.Sheets.Constantes);if(DATA.constantes={},a.forEach(e=>{e.constante&&(DATA.constantes[e.constante]=e["valor_unitário"])}),DATA.tarifarios=XLSX.utils.sheet_to_json(o.Sheets.Tarifas_Gas_Master),DATA.tarifarios.length>0){console.log("=== TAR Flag Debug (primeiros 3 tarifários) ==="),DATA.tarifarios.slice(0,3).forEach(e=>{console.log(`${e.Nome_Tarifa_G}: tar_fixo_raw=${JSON.stringify(e.tar_incluida_termo_fixo)} (type: ${typeof e.tar_incluida_termo_fixo}) → ${excelBool(e.tar_incluida_termo_fixo,!0)} | tar_energia_raw=${JSON.stringify(e.tar_incluida_energia)} (type: ${typeof e.tar_incluida_energia}) → ${excelBool(e.tar_incluida_energia,!0)}`)});const e=DATA.tarifarios.filter(e=>!1===excelBool(e.tar_incluida_termo_fixo,!0)),t=DATA.tarifarios.filter(e=>!1===excelBool(e.tar_incluida_energia,!0));console.log(`Tarifários com tar_incluida_termo_fixo=FALSE: ${e.length}`,e.map(e=>e.Nome_Tarifa_G)),console.log(`Tarifários com tar_incluida_energia=FALSE: ${t.length}`,t.map(e=>e.Nome_Tarifa_G))}DATA.municipios=XLSX.utils.sheet_to_json(o.Sheets.TOS);const n=XLSX.utils.sheet_to_json(o.Sheets.MIBGAS,{raw:!1});DATA.mibgas=n.map(e=>{let t=e.Data;return"string"==typeof t&&(t=new Date(t)),{data:t instanceof Date?t:new Date(t),preco:parseFloat(e["Preço"])||0}}).filter(e=>!isNaN(e.data.getTime())&&e.preco>0);const i=XLSX.utils.sheet_to_json(o.Sheets.Info||{});DATA.info={},i.forEach(e=>{e.Descricao&&(DATA.info[e.Descricao]=e.Data||e.Valor||"")}),preencherMunicipios(),inicializarDatas(),atualizarMibgasDefault();const l=C("ISP_Gas_eur_kwh");l>0&&(document.getElementById("isp_input").value=l);const r=DATA.info["Ultima Data MIBGAS SPOT"];if(r)try{const e=new Date(r);document.getElementById("ref-mibgas-date").textContent="Valores MIBGAS (SPOT) atualizados até: "+e.toLocaleDateString("pt-PT")}catch(e){}document.getElementById("loader").classList.add("hidden"),document.getElementById("resultados").classList.remove("hidden"),document.getElementById("simulador-header").classList.remove("hidden"),document.getElementById("tabs-wrapper").classList.remove("hidden"),populateProviderFilters(),populateQuickProviders(),window._HAS_SHARED_PARAMS&&aplicarParametrosPartilha(),calcular(),runQuickSim()}catch(e){document.getElementById("loader").innerHTML=`<p style="color:var(--danger);">❌ Erro ao carregar dados: ${e.message}</p><p style="font-size:0.8rem;">Tente recarregar a página.</p>`,console.error(e)}}function preencherMunicipios(){const e=document.getElementById("sel_municipio"),t=[...new Set(DATA.municipios.map(e=>(e["Município"]||"").trim()).filter(Boolean))];t.sort((e,t)=>e.normalize("NFD").replace(/[\u0300-\u036f]/g,"").localeCompare(t.normalize("NFD").replace(/[\u0300-\u036f]/g,""))),t.forEach((t,o)=>{const a=document.createElement("option");a.value=t,a.textContent=t,"Almeirim"===t&&(a.selected=!0),e.appendChild(a)}),e.value||(e.selectedIndex=Math.min(9,t.length-1))}function inicializarDatas(){const e=new Date,t=new Date(e);t.setDate(e.getDate()+1);const o=new Date(t);o.setMonth(o.getMonth()+1),o.setDate(o.getDate()-1),document.getElementById("d_inicio").value=formatDate(t),document.getElementById("d_fim").value=formatDate(o),atualizarDiasDisplay()}function formatDate(e){return e.toISOString().split("T")[0]}function parseDateInput(e){return new Date(document.getElementById(e).value+"T00:00:00")}function getDias(){const e=parseDateInput("d_inicio"),t=parseDateInput("d_fim");return Math.max(1,Math.round((t-e)/864e5)+1)}function atualizarDiasDisplay(){document.getElementById("dias-val").textContent=getDias()+" dias";const e=parseFloat(document.getElementById("consumo_kwh").value),t=isNaN(e)?0:Math.max(0,e),o=getDias();document.getElementById("consumo-diario-val").textContent=o>0?(t/o).toFixed(2)+" kWh/dia":"—";const a=document.getElementById("alerta-consumo-negativo");a&&a.classList.toggle("hidden",!(e<0))}function onDatasChange(){atualizarDiasDisplay(),atualizarMibgasDefault(),calcular()}function onEscalaoChange(){const e=parseInt(document.getElementById("sel_escalao").value);document.getElementById("consumo_kwh").value={1:135,2:300,3:600,4:1e3}[e]||135;const t=e<=2;document.getElementById("ts-section").classList.toggle("hidden",!t);const o=document.getElementById("ts-unavailable");o&&o.classList.toggle("hidden",t),t||(document.getElementById("chk_ts").checked=!1),atualizarDefaultsMeuPers(e),atualizarDiasDisplay(),calcular()}_isDark()&&document.addEventListener("DOMContentLoaded",function(){var e=document.getElementById("dark-icon");e&&(e.className="fa-solid fa-sun")});const DEFAULTS_POR_ESCALAO={1:{energia:.0647,fixo:.0897},2:{energia:.0601,fixo:.1298},3:{energia:.0571,fixo:.1643},4:{energia:.0559,fixo:.2068}};function atualizarDefaultsMeuPers(e){const t=DEFAULTS_POR_ESCALAO[e]||DEFAULTS_POR_ESCALAO[1],o=document.getElementById("meu_energia"),a=document.getElementById("meu_fixo"),n=document.getElementById("pers_energia"),i=document.getElementById("pers_fixo"),l=e=>{const t=parseFloat(e.value);if(0===t)return!0;for(const e in DEFAULTS_POR_ESCALAO){const o=DEFAULTS_POR_ESCALAO[e];if(Math.abs(t-o.energia)<1e-5||Math.abs(t-o.fixo)<1e-5)return!0}return!1};l(o)&&(o.value=t.energia),l(a)&&(a.value=t.fixo),l(n)&&(n.value=t.energia),l(i)&&(i.value=t.fixo)}function atualizarMibgasDefault(){const e=parseDateInput("d_inicio"),t=parseDateInput("d_fim"),o=new Date(t.getTime()+86399999);let a=0,n=0;DATA.mibgas.forEach(t=>{t.data>=e&&t.data<=o&&(a+=t.preco,n++)});let i=n>0?a/n:C("MIBGAS_Default")||30;i=Math.round(100*i)/100,document.getElementById("mibgas_input").value=i,document.getElementById("mibgas-help").textContent=`Média calculada: ${i} €/MWh (${n} dias)`}function getMibgasMwh(){return parseFloat(document.getElementById("mibgas_input").value)||30}function getTOS(){const e=document.getElementById("sel_municipio").value,t=DATA.municipios.find(t=>(t["Município"]||"").trim()===e);return t?{fixo:parseFloat(t.TOS_Fixo_Dia||t["TOS_Fixo_Dia (€/dia)"]||0),var:parseFloat(t.TOS_Variavel_kWh||t["TOS_Variavel_kWh (€/kWh)"]||0),cur:t.CUR||"",link:t.site_adesao||""}:{fixo:0,var:0,cur:"",link:""}}function excelBool(e,t){if(null==e||""===e)return t;if("boolean"==typeof e)return e;if("number"==typeof e)return 0!==e;if("string"==typeof e){const t=e.trim().toUpperCase();if("FALSE"===t||"FALSO"===t||"0"===t||"NÃO"===t||"NAO"===t||"NO"===t||"N"===t)return!1;if("TRUE"===t||"VERDADEIRO"===t||"1"===t||"SIM"===t||"YES"===t||"S"===t||"Y"===t)return!0}return t}function calcularCustoGasCompleto(e,t,o,a,n,i,l,r,s,c){try{const d=.06,u=.23,m=(e.tipo||"Fixo").trim(),g=e.Nome_Tarifa_G||"";let p=g;const f=l/1e3;let h=0;"Fixo"===m?h=parseFloat(e.Termo_Energia_eur_kwh||0):"Indexado"===m&&(h="Luzigás - Plano Gás"===g?f+C("Luzigas_Gas_K")+C("Luzigas_Gas_CGS"):"EDP - Gás Indexado"===g?f*C("EDP_Gas_(1+Perdas)")*C("EDP_Gas_K1")+C("EDP_Gas_K2"):"Galp Plano Flexível - Gás"===g?(f+C("Galp_Gas_C"))*C("Galp_Gas_(1+L)"):"Endesa Gás Tarifa Indexada"===g?f+C("Endesa_Gas_A"+a):"Goldenergy Tarifa Index Gas 100% Online"===g?f*C("GE_Gas_(1+Perdas)")+C("GE_Gas_QTarifa")+C("GE_Gas_CG"):f+parseFloat(e.Margem_Index||0));const _=parseFloat(e.Termo_Fixo_eur_dia||0),E=excelBool(e.tar_incluida_termo_fixo,!0),v=excelBool(e.tar_incluida_energia,"Indexado"!==m),y=C("TAR_Gas_Fixo_E"+a),x=C("TAR_Gas_Energia_E"+a),b=E?_-y:_,I=v?h-x:h;let T=y,S=x,k=t*r,B=0,A=0;if(n&&(1===a||2===a)){const e=C("Desconto_TS_Gas_Fixo_E"+a),t=C("Desconto_TS_Gas_Energia_E"+a);T=Math.max(0,y-e),S=Math.max(0,x-t),B=y-T,A=x-S,k=0}const D=b+T,F=I+S,w=T*o,L=b*o,M=S*t,$=I*t,P=i.fixo*o,O=i.var*t,R=w,z=L+M+$+k+P+O,G=R*d,U=z*u;let q=R+z+G+U;const N=o>=28&&o<=31;let K=0,X=0;const Q=parseFloat(e.desconto_fatura_mes||0),V=parseFloat(e.desconto_meses_limite||0);if(Q>0){const e=V>0?30*V:1/0,t=Math.min(o,e);K+=N&&(0===V||V>=1)?Q:Q/30*t;const a=V>0?` nos 1ºs ${Math.round(V)} meses`:"";p+=` (INCLUI desc. ${Q.toFixed(2)}€/mês${a}, s/ desc.=${q.toFixed(2)}€)`}s&&g.startsWith("Goldenergy - ACP")&&(X+=N?c:c/30*o,p+=" (INCLUI Quota ACP)");const W=q-K+X;return{nome:p,nomeOriginal:g,comercializador:e.Comercializador||"",tipo:m,segmento:(e.segmento||"").trim(),faturacao:(e.faturacao||"").trim(),pagamento:(e.pagamento||"").trim(),linkAdesao:e.site_adesao||"",notas:e.notas||"",total:Math.round(100*W)/100,pEnergiaKwh:Math.round(1e5*F)/1e5,pFixoDia:Math.round(1e5*D)/1e5,tt:{compFixo:b,tarFixoReg:y,descTsFixo:B,compEnergia:I,tarEnergiaReg:x,descTsEnergia:A,energiaSIva:M+$,fixoSIva:w+L,ispSIva:k,tosFixo:P,tosVar:O,totalSIva:R+z,iva6:G,iva23:U,subtotalCIva:q,descTotal:K,acresTotal:X}}}catch(t){return console.error("Erro cálculo:",e.Nome_Tarifa_G,t),null}}function calcularMeuTarifario(e,t,o,a,n,i){const l=parseFloat(document.getElementById("meu_energia").value)||0,r=parseFloat(document.getElementById("meu_fixo").value)||0,s=document.getElementById("meu_tar_energia").checked,c=document.getElementById("meu_tar_fixo").checked,d=parseFloat(document.getElementById("meu_desc_energia_perc").value)||0,u=parseFloat(document.getElementById("meu_desc_fixo_perc").value)||0,m=parseFloat(document.getElementById("meu_desc_fatura").value)||0,g=parseFloat(document.getElementById("meu_acres_fatura").value)||0,p=C("TAR_Gas_Fixo_E"+o),f=C("TAR_Gas_Energia_E"+o);let h=e*i,_=0,E=0;a&&o<=2&&(_=Math.min(p,C("Desconto_TS_Gas_Fixo_E"+o)),E=Math.min(f,C("Desconto_TS_Gas_Energia_E"+o)),h=0);const v=((c?r-p:r)+p)*(1-u/100)-_,y=((s?l-f:l)+f)*(1-d/100)-E,x=p-_,b=f-E,I=v-x,T=y-b,S=x*t,k=I*t,B=b*e,A=T*e,D=n.fixo*t,F=n.var*e,w=S,L=k+B+A+h+D+F,M=.06*w,$=.23*L,P=w+L+M+$,O=P-m+g;let R="O Meu Tarifário (Gás)";const z=m-g;return z>0?R+=` (Inclui desc. ${z.toFixed(2)}€)`:z<0&&(R+=` (Inclui acrésc. ${Math.abs(z).toFixed(2)}€)`),{nome:R,nomeOriginal:R,comercializador:"Pessoal",tipo:"Pessoal",segmento:"Pessoal",faturacao:"-",pagamento:"-",linkAdesao:"-",notas:"Configurado pelo utilizador.",total:Math.round(100*O)/100,pEnergiaKwh:Math.round(1e5*y)/1e5,pFixoDia:Math.round(1e5*v)/1e5,tt:{compFixo:I,tarFixoReg:p,descTsFixo:_,compEnergia:T,tarEnergiaReg:f,descTsEnergia:E,energiaSIva:B+A,fixoSIva:S+k,ispSIva:h,tosFixo:D,tosVar:F,totalSIva:w+L,iva6:M,iva23:$,subtotalCIva:P,descTotal:m,acresTotal:g}}}function calcularPersonalizado(e,t,o,a,n,i){const l=parseFloat(document.getElementById("pers_energia").value)||0,r=parseFloat(document.getElementById("pers_fixo").value)||0,s=document.getElementById("pers_tar_energia").checked,c=document.getElementById("pers_tar_fixo").checked,d=C("TAR_Gas_Fixo_E"+o),u=C("TAR_Gas_Energia_E"+o);let m=e*i,g=0,p=0;a&&o<=2&&(g=Math.min(d,C("Desconto_TS_Gas_Fixo_E"+o)),p=Math.min(u,C("Desconto_TS_Gas_Energia_E"+o)),m=0);const f=c?r-d:r,h=s?l-u:l,_=Math.max(0,d-g),E=Math.max(0,u-p),v=f+_,y=h+E,x=_*t,b=f*t,I=E*e,T=h*e,S=n.fixo*t,k=n.var*e,B=x,A=b+I+T+m+S+k,D=.06*B,F=.23*A,w=B+A+D+F;return{nome:"Tarifário Personalizado (Gás)",nomeOriginal:"Tarifário Personalizado (Gás)",comercializador:"Personalizado",tipo:"Pessoal",segmento:"Pessoal",faturacao:"-",pagamento:"-",linkAdesao:"-",notas:"Configurado pelo utilizador.",total:Math.round(100*w)/100,pEnergiaKwh:Math.round(1e5*y)/1e5,pFixoDia:Math.round(1e5*v)/1e5,tt:{compFixo:f,tarFixoReg:d,descTsFixo:g,compEnergia:h,tarEnergiaReg:u,descTsEnergia:p,energiaSIva:I+T,fixoSIva:x+b,ispSIva:m,tosFixo:S,tosVar:k,totalSIva:B+A,iva6:D,iva23:F,subtotalCIva:w,descTotal:0,acresTotal:0}}}function calcular(){if(!DATA.tarifarios.length)return;const e=parseInt(document.getElementById("sel_escalao").value),t=Math.max(0,parseFloat(document.getElementById("consumo_kwh").value)||0),o=getDias(),a=document.getElementById("chk_ts").checked,n=getTOS(),i=getMibgasMwh(),l=parseFloat(document.getElementById("isp_input").value)||0,r=document.getElementById("chk_acp").checked,s=C("Quota_ACP")||4.9,c=document.getElementById("cur-nome");n.cur&&n.link&&n.link.startsWith("http")?c.innerHTML=`<a href="${n.link}" target="_blank" style="color:var(--primary);text-decoration:underline;cursor:pointer;" title="Aderir / Saber mais">${n.cur}</a>`:c.textContent=n.cur||"—",atualizarDiasDisplay();const d=e<=2;document.getElementById("ts-section").classList.toggle("hidden",!d);const u=document.getElementById("ts-unavailable");u&&u.classList.toggle("hidden",d);const m=document.getElementById("chk_meu_ativo").checked,g=document.getElementById("chk_pers_ativo").checked;document.getElementById("meu-campos").classList.toggle("hidden",!m),document.getElementById("pers-campos").classList.toggle("hidden",!g),document.getElementById("leg-meu").classList.toggle("hidden",!m),document.getElementById("leg-pers").classList.toggle("hidden",!g);const p=DATA.tarifarios.filter(t=>{const o=parseInt(t.escalao),a=(t.disponibilidade||"").trim().toLowerCase();return o===e&&("g_so"===a||"ambos"===a)});let f=[];if(p.forEach(c=>{const d=(c.Nome_Tarifa_G||"").toLowerCase();d.includes("tarifa regulada")&&n.link&&(c._linkCur=n.link);const u=calcularCustoGasCompleto(c,t,o,e,a,n,i,l,r,s);u&&(d.includes("tarifa regulada")&&n.link&&(u.linkAdesao=n.link),f.push(u))}),m){const i=calcularMeuTarifario(t,o,e,a,n,l);i&&f.push(i)}if(g){const i=calcularPersonalizado(t,o,e,a,n,l);i&&f.push(i)}f.sort((e,t)=>e.total-t.total),RESULTADOS_COMPLETOS=f,renderResumo(e,t,o,i,a),renderPoupanca(f,m),aplicarFiltrosEReordenar()}let EXCLUDED_PROVIDERS=new Set;function toggleProviderFilter(){const e=document.getElementById("content-provider-filter");e.classList.toggle("collapsed"),document.getElementById("icon-provider-filter").className=e.classList.contains("collapsed")?"fa-solid fa-chevron-down":"fa-solid fa-chevron-up"}function populateProviderFilters(){const e=[...new Set(DATA.tarifarios.map(e=>(e.Comercializador||"").trim()).filter(Boolean))].sort(),t=document.getElementById("provider-filters");if(!t)return;t.innerHTML="";const o=document.createElement("button");o.textContent="☑ Selecionar / Desselecionar Todos",o.style.cssText="grid-column:1/-1; padding:6px 10px; border:1px solid var(--border); border-radius:6px; cursor:pointer; font-size:0.78rem; font-weight:600; background:var(--bg); color:var(--text-main); margin-bottom:4px;",o.onclick=function(){const o=t.querySelectorAll('input[type="checkbox"]'),a=Array.from(o).every(e=>e.checked);o.forEach(e=>{e.checked=!a}),EXCLUDED_PROVIDERS.clear(),a||e.forEach(e=>EXCLUDED_PROVIDERS.add(e)),aplicarFiltrosEReordenar()},t.appendChild(o),e.forEach(e=>{const o=document.createElement("label");o.className="provider-checkbox";const a=document.createElement("input");a.type="checkbox",a.value=e,a.onchange=function(){this.checked?EXCLUDED_PROVIDERS.add(this.value):EXCLUDED_PROVIDERS.delete(this.value),aplicarFiltrosEReordenar()},o.appendChild(a),o.appendChild(document.createTextNode(e)),t.appendChild(o)})}function toggleProvider(e){EXCLUDED_PROVIDERS.has(e)?EXCLUDED_PROVIDERS.delete(e):EXCLUDED_PROVIDERS.add(e),aplicarFiltrosEReordenar()}function aplicarFiltrosEReordenar(){const e=document.getElementById("filtro_segmento").value,t=Array.from(document.querySelectorAll(".chk-tipo:checked")).map(e=>e.value),o=document.getElementById("filtro_faturacao").value,a=document.getElementById("filtro_pagamento").value,n=(document.getElementById("f_procura")?.value||"").trim().toLowerCase();let i=RESULTADOS_COMPLETOS.filter(i=>{if("Pessoal"===i.tipo)return!0;if(EXCLUDED_PROVIDERS.has(i.comercializador))return!1;if("Ambos"!==e){const t=i.segmento;if("Residencial"===e){if("Doméstico"!==t&&"Doméstico e Não Doméstico"!==t)return!1}else if("Empresarial"===e&&"Não Doméstico"!==t&&"Doméstico e Não Doméstico"!==t)return!1}return!(t.length>0&&!t.includes(i.tipo)||o&&!i.faturacao.includes(o)||a&&!i.pagamento.includes(a)||n&&!i.comercializador.toLowerCase().includes(n)&&!i.nome.toLowerCase().includes(n)&&!i.nomeOriginal.toLowerCase().includes(n))});i.sort((e,t)=>{let o,a;switch(SORT_COL){case 0:return o=e.nome.toLowerCase(),a=t.nome.toLowerCase(),SORT_ASC?o.localeCompare(a):a.localeCompare(o);case 1:default:o=e.total,a=t.total;break;case 2:o=e.pEnergiaKwh,a=t.pEnergiaKwh;break;case 3:o=e.pFixoDia,a=t.pFixoDia}return SORT_ASC?o-a:a-o}),renderTabela(i),renderPodium(i);const l=Array.from(document.querySelectorAll(".chk-tipo:checked")).map(e=>e.value);document.getElementById("leg-fixo").classList.toggle("hidden",!l.includes("Fixo")),document.getElementById("leg-index").classList.toggle("hidden",!l.includes("Indexado"))}function sortTable(e){SORT_COL===e?SORT_ASC=!SORT_ASC:(SORT_COL=e,SORT_ASC=!0),document.querySelectorAll("#tbl-resultados th").forEach(t=>{const o=parseInt(t.dataset.col);if(isNaN(o))return;t.classList.toggle("sorted",o===e);const a=t.querySelector(".sort-arrow");a&&(a.textContent=o===e&&SORT_ASC?"▲":"▼")}),aplicarFiltrosEReordenar()}function limparFiltros(){document.getElementById("filtro_segmento").value="Residencial",document.querySelectorAll(".chk-tipo").forEach(e=>e.checked=!0),document.getElementById("filtro_faturacao").value="",document.getElementById("filtro_pagamento").value="";const e=document.getElementById("f_procura");e&&(e.value=""),EXCLUDED_PROVIDERS.clear(),document.querySelectorAll('#provider-filters input[type="checkbox"]').forEach(e=>e.checked=!1),aplicarFiltrosEReordenar()}function getCellStyle(e,t){return"Pessoal"===e&&t&&t.includes("O Meu Tarifário")?{cellClass:"cell-meu-tarif",tagClass:"meu-tarif",label:"Meu Tarifário"}:"Pessoal"===e?{cellClass:"cell-perso",tagClass:"perso",label:"Personalizado"}:"Indexado"===e?{cellClass:"cell-index-media",tagClass:"index-media",label:"Indexado"}:{cellClass:"cell-fixo",tagClass:"fixo",label:"Fixo"}}function renderTabela(e){const t=document.getElementById("tbl-body");window._TBL_DATA=e;const o=document.getElementById("tbl-count");if(o&&(o.textContent=`${e.length} tarifário${1!==e.length?"s":""} encontrado${1!==e.length?"s":""}`),!e.length)return void(t.innerHTML='<tr><td colspan="5" style="padding:30px;color:var(--text-light);">Nenhum tarifário encontrado com os filtros selecionados.</td></tr>');const a=e.map(e=>e.total),n=e.map(e=>e.pEnergiaKwh),i=e.map(e=>e.pFixoDia),l={total:{min:Math.min(...a),max:Math.max(...a)},energia:{min:Math.min(...n),max:Math.max(...n)},fixo:{min:Math.min(...i),max:Math.max(...i)}};t.innerHTML=e.map((e,t)=>{const o=getCellStyle(e.tipo,e.nome),a=e.linkAdesao&&e.linkAdesao.startsWith("http")?e.linkAdesao:"",n=a?`onclick="window.open('${a.replace(/'/g,"\\'")}','_blank')"`:"",i=e.notas?e.notas.replace(/"/g,"&quot;").replace(/</g,"&lt;"):"";let r="";return a&&(r+=`<a href="${a}" target="_blank" title="Aderir" style="color:var(--primary); margin-right:8px;"><i class="fa-solid fa-link"></i></a>`),i&&(r+=`<i class="fa-solid fa-circle-info" title="${i}" style="color:var(--text-light); cursor:help;"></i>`),`<tr>\n            <td class="${o.cellClass}">\n                <div class="tariff-name" ${n}>${e.comercializador}</div>\n                <div class="tariff-details">${e.nome}</div>\n                <span class="tag ${o.tagClass}">${o.label}</span>\n                ${i?`<i class="fa-solid fa-circle-info" title="${i}" style="color:var(--text-light);cursor:help;font-size:0.75rem;margin-left:4px;"></i>`:""}\n            </td>\n            <td class="price-main" style="${gradiente(e.total,l.total)}border-radius:10px;" onmouseenter="showTT(event,'total',${t})" onmouseleave="hideTT()">€ ${e.total.toFixed(2)}</td>\n            <td class="price-sub" style="${gradiente(e.pEnergiaKwh,l.energia)}border-radius:10px;" onmouseenter="showTT(event,'energia',${t})" onmouseleave="hideTT()">${e.pEnergiaKwh.toFixed(5)}</td>\n            <td class="price-sub" style="${gradiente(e.pFixoDia,l.fixo)}border-radius:10px;" onmouseenter="showTT(event,'fixo',${t})" onmouseleave="hideTT()">${e.pFixoDia.toFixed(5)}</td>\n            <td style="font-size:1.1em; text-align:center;">${r}</td>\n        </tr>`}).join(""),makeColumnsResizable()}function showTT(e,t,o){const a=window._TBL_DATA[o];if(!a)return;const n=document.getElementById("floating-tooltip");let i="";const l=e=>"number"==typeof e?e.toFixed(2):"0.00",r=e=>"number"==typeof e?e.toFixed(4):"0.0000",s=a.tt||{};"total"===t?(i=`<b>${a.nome}</b><div class="sep"></div><b>Decomposição Custo Total:</b><div class="sep"></div>`,i+=`Energia s/IVA: ${l(s.energiaSIva)} €<br>Fixo s/IVA: ${l(s.fixoSIva)} €<br>`,s.ispSIva&&(i+=`ISP s/IVA: ${l(s.ispSIva)} €<br>`),(s.tosFixo||s.tosVar)&&(i+=`TOS: ${l((s.tosFixo||0)+(s.tosVar||0))} €<br>`),i+=`<b>Subtotal s/IVA: ${l(s.totalSIva)} €</b><div class="sep"></div>`,s.iva6&&(i+=`IVA 6%: ${l(s.iva6)} €<br>`),s.iva23&&(i+=`IVA 23%: ${l(s.iva23)} €<br>`),i+=`<b>Subtotal c/IVA: ${l(s.subtotalCIva)} €</b>`,(s.descTotal||s.acresTotal)&&(i+='<div class="sep"></div>',s.descTotal&&(i+=`Descontos: -${l(s.descTotal)} €<br>`),s.acresTotal&&(i+=`Acréscimos: +${l(s.acresTotal)} €<br>`)),i+=`<div class="sep"></div><b style="font-size:1.05em;">Total Final: € ${a.total.toFixed(2)}</b>`):"energia"===t?(i='<b>Decomposição Energia (s/IVA):</b><div class="sep"></div>',i+=`Comercializador (s/TAR): ${r(s.compEnergia)} €/kWh<br>TAR (Tarifa Acesso Redes): ${r(s.tarEnergiaReg)} €/kWh<br>`,s.descTsEnergia>0&&(i+=`Desconto Tarifa Social: -${r(s.descTsEnergia)} €/kWh<br>`),i+=`<div class="sep"></div><b>Custo Final: ${a.pEnergiaKwh.toFixed(5)} €/kWh</b>`):"fixo"===t&&(i='<b>Decomposição Termo Fixo (s/IVA):</b><div class="sep"></div>',i+=`Comercializador (s/TAR): ${r(s.compFixo)} €/dia<br>TAR (Tarifa Acesso Redes): ${r(s.tarFixoReg)} €/dia<br>`,s.descTsFixo>0&&(i+=`Desconto Tarifa Social: -${r(s.descTsFixo)} €/dia<br>`),i+=`<div class="sep"></div><b>Custo Final: ${a.pFixoDia.toFixed(5)} €/dia</b>`),n.innerHTML=i,n.style.display="block";const c=e.clientX,d=e.clientY,u=n.offsetWidth;let m=c+16,g=d-n.offsetHeight-10;m+u>window.innerWidth-10&&(m=c-u-16),g<10&&(g=d+20),n.style.left=m+"px",n.style.top=g+"px"}function hideTT(){document.getElementById("floating-tooltip").style.display="none"}function showTooltipNome(e,t,o){const a=document.getElementById("floating-tooltip");let n=`<div style="font-weight:700; margin-bottom:6px; font-size:0.88rem;">${t}</div>`;o&&o.trim()&&(n+=`<div style="font-size:0.82rem; line-height:1.5;">${o}</div>`),a.innerHTML=n,a.style.display="block";const i=a.getBoundingClientRect();let l=e.clientX+12,r=e.clientY+12;l+320>window.innerWidth&&(l=window.innerWidth-330),r+i.height>window.innerHeight&&(r=e.clientY-i.height-12),a.style.left=l+"px",a.style.top=r+"px"}function hideTooltipNome(){document.getElementById("floating-tooltip").style.display="none"}function makeColumnsResizable(e){const t=e||document.getElementById("tbl-resultados");t&&t.querySelectorAll("th").forEach(e=>{if(e.querySelector(".resizer"))return;const t=document.createElement("div");let o,a;t.classList.add("resizer"),e.appendChild(t),t.addEventListener("mousedown",t=>{t.stopPropagation(),o=t.pageX,a=e.offsetWidth;const n=t=>{e.style.width=a+(t.pageX-o)+"px"},i=()=>{document.removeEventListener("mousemove",n),document.removeEventListener("mouseup",i)};document.addEventListener("mousemove",n),document.addEventListener("mouseup",i)})})}function gradiente(e,t){if(t.max===t.min)return"text-align:center;";const o=(e-t.min)/(t.max-t.min),a=[90,138,198],n=[255,255,255],i=[247,150,70];let l,r,s;if(o<.5){const e=o/.5;l=Math.round(a[0]*(1-e)+n[0]*e),r=Math.round(a[1]*(1-e)+n[1]*e),s=Math.round(a[2]*(1-e)+n[2]*e)}else{const e=(o-.5)/.5;l=Math.round(n[0]*(1-e)+i[0]*e),r=Math.round(n[1]*(1-e)+i[1]*e),s=Math.round(n[2]*(1-e)+i[2]*e)}return`background:rgb(${l},${r},${s});color:${.299*l+.587*r+.114*s>140?"black":"white"};text-align:center;border-radius:4px;`}function renderPodium(e){const t=document.getElementById("podium"),o=e.filter(e=>"Pessoal"!==e.tipo).slice(0,3);if(!o.length)return void(t.innerHTML="");const a=["🥇","🥈","🥉"],n=["first","second","third"];let i='<h2 style="text-align:center; margin-bottom:16px; font-size:1.2rem;">🏆 Melhores Soluções</h2><div class="podium-container">';for(let e=0;e<3;e++)if(o[e]){const t=o[e],l=0===e?0:t.total-o[0].total,r="Fixo"===t.tipo?'<span style="font-size:0.65rem; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;">Fixo</span>':'<span style="font-size:0.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:4px;">Indexado</span>';i+=`\n                <div class="podium-item ${n[e]}">\n                    <div class="podium-medal">${a[e]}</div>\n                    <div class="podium-name">${t.comercializador}</div>\n                    <div class="podium-tariff">${t.nomeOriginal}</div>\n                    ${r}\n                    <div class="podium-price">${t.total.toFixed(2)}€<span style="font-size:0.5em; color:#64748b; font-weight:400;">/mês</span></div>\n                    ${0===e?'<div style="color:var(--success); font-size:0.75rem; margin-top:4px; font-weight:600;">✓ Melhor oferta</div>':`<div style="color:#dc2626; font-size:0.75rem; margin-top:4px;">+${l.toFixed(0)}€ / mês</div>`}\n                </div>`}else i+=`\n                <div class="podium-item ${n[e]}" style="opacity:0.5; background:#f1f5f9;">\n                    <div class="podium-medal" style="filter:grayscale(1);">${a[e]}</div>\n                    <div class="podium-name" style="color:#94a3b8;">---</div>\n                    <div class="podium-price" style="color:#cbd5e1;">-</div>\n                </div>`;i+="</div>",t.innerHTML=i}function renderResumo(e,t,o,a,n){const i=document.getElementById("sel_municipio").value,l=document.getElementById("d_inicio").value,r=document.getElementById("d_fim").value,s=document.getElementById("filtro_segmento").value,c=document.getElementById("filtro_faturacao").value||"Todas",d=document.getElementById("filtro_pagamento").value||"Todos",u=Array.from(document.querySelectorAll(".chk-tipo:checked")).map(e=>e.value);let m="<b>Resumo da Simulação (Gás Natural):</b><br>";m+=`<b>Segmento:</b> ${s} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Faturação:</b> ${c} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Pagamento:</b> ${d} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Tipos:</b> ${2===u.length?"Todos":u.join(", ")||"Nenhum"}<br>`,m+=`<b>${{1:"Escalão 1",2:"Escalão 2",3:"Escalão 3",4:"Escalão 4"}[e]}</b> | <b>Município:</b> ${i}<br>`,m+=`<b>Consumo:</b> ${t} kWh<br>`,m+=`<b>Período:</b> ${formatDatePT(l)} a ${formatDatePT(r)} (<b>${o} dias</b>)<br>`,m+=`<b>MIBGAS:</b> ${a.toFixed(2)} €/MWh`,n&&(m+='<br><span style="color:var(--danger);font-weight:bold;">Benefício Aplicado: Tarifa Social (Gás)</span>'),document.getElementById("resumo-box").innerHTML=m}function formatDatePT(e){const t=e.split("-");return`${t[2]}/${t[1]}/${t[0]}`}function renderPoupanca(e,t){const o=document.getElementById("poupanca-msg");if(!t)return void(o.innerHTML="");const a=e.find(e=>e.nome.includes("O Meu Tarifário")),n=e.filter(e=>"Pessoal"!==e.tipo);if(!a||!n.length)return void(o.innerHTML="");const i=n[0];if(a.total>i.total){const e=(a.total-i.total).toFixed(2),t=((a.total-i.total)/a.total*100).toFixed(2);o.innerHTML=`<span style="color:var(--danger);font-weight:bold;">Poupança: ${e}€ (${t}%) — de "${a.nome}" (${a.total.toFixed(2)}€) para "${i.nomeOriginal}" (${i.total.toFixed(2)}€)</span>`}else o.innerHTML=`<span style="color:var(--success);font-weight:bold;">Parabéns! O seu tarifário (${a.total.toFixed(2)}€) já é o mais económico!</span>`}function gerarGraficoMibgas(){if("undefined"==typeof Highcharts||!DATA.mibgas.length)return;const e=parseDateInput("d_inicio"),t=parseDateInput("d_fim");let o=null;const a=DATA.info["Ultima Data MIBGAS SPOT"];if(a)try{o=new Date(a)}catch(e){}const n=DATA.mibgas.filter(o=>o.data>=e&&o.data<=new Date(t.getTime()+864e5)).sort((e,t)=>e.data-t.data);if(!n.length)return void(document.getElementById("mibgas-chart-container").innerHTML='<p style="text-align:center;color:var(--text-light);padding:20px;">Sem dados MIBGAS para o período.</p>');const i=n.map(e=>e.data.toLocaleDateString("pt-PT",{day:"2-digit",month:"2-digit"})),l=[],r=[];n.forEach(e=>{o&&e.data>o?(l.push(null),r.push(Math.round(100*e.preco)/100)):(l.push(Math.round(100*e.preco)/100),r.push(null))});const s="dark"===document.documentElement.getAttribute("data-theme"),c=s?"#1e293b":"#ffffff",d=s?"#e2e8f0":"#333333";Highcharts.chart("mibgas-chart-container",{chart:{type:"line",height:260,backgroundColor:c,style:{fontFamily:"Roboto, sans-serif"}},title:{text:"Evolução MIBGAS (Spot vs Futuros)",style:{fontSize:"13px",color:d}},xAxis:{categories:i,labels:{style:{fontSize:"10px",color:d}},lineColor:s?"#475569":"#ccd6eb"},yAxis:{title:{text:"€/MWh",style:{color:d}},labels:{style:{color:d}},gridLineColor:s?"#334155":"#e6e6e6"},series:[{name:"Spot (real)",data:l,color:"#16a34a",tooltip:{valueSuffix:" €/MWh"}},{name:"Futuros (estimado)",data:r,color:"#f59e0b",dashStyle:"shortdot",tooltip:{valueSuffix:" €/MWh"}}],legend:{enabled:!0,itemStyle:{color:d}},credits:{enabled:!1},tooltip:{shared:!0,backgroundColor:s?"#334155":"#ffffff",style:{color:d}}})}function exportarPDF(){if(!RESULTADOS_COMPLETOS.length)return void alert("Sem resultados para exportar. Execute primeiro uma simulação.");const e=e=>e?e.split("-").reverse().join("/"):"?",t=document.getElementById("sel_escalao").value,o=document.getElementById("sel_municipio").value,a=document.getElementById("consumo_kwh").value,n=getDias(),i=document.getElementById("d_inicio").value,l=document.getElementById("d_fim").value,r=getMibgasMwh(),s=document.getElementById("chk_ts").checked,c=document.getElementById("filtro_segmento").value,d=document.getElementById("filtro_faturacao").value||"Todas",u=document.getElementById("filtro_pagamento").value||"Todos",m=Array.from(document.querySelectorAll(".chk-tipo:checked")).map(e=>e.value),g=2===m.length?"Todos":m.join(", ")||"Nenhum",p=RESULTADOS_COMPLETOS.find(e=>e.nome.includes("O Meu Tarifário")),f=RESULTADOS_COMPLETOS.find(e=>"Pessoal"===e.tipo&&!e.nome.includes("O Meu Tarifário"));let h=[...RESULTADOS_COMPLETOS].sort((e,t)=>e.total-t.total).slice(0,15);p&&!h.includes(p)&&(h.pop(),h.push(p),h.sort((e,t)=>e.total-t.total)),f&&!h.includes(f)&&(h.pop(),h.push(f),h.sort((e,t)=>e.total-t.total));let _=0;const E=h.map(e=>{const t=e.nome.includes("O Meu Tarifário"),o="Pessoal"===e.tipo&&!t,a=t?"background:#fff5f5;font-weight:600;":o?"background:#f9fff2;font-weight:600;":e===h[0]?"background:#f0fdf4;":"";return t||o||_++,`<tr style="${a}"><td style="padding:5px 6px;border:1px solid #ddd;">${t?"🧾":o?"🛠️":_}</td><td style="padding:5px 6px;border:1px solid #ddd;">${e.comercializador} — ${e.nome}</td><td style="padding:5px 6px;border:1px solid #ddd;font-weight:600;">${e.total.toFixed(2)} €</td><td style="padding:5px 6px;border:1px solid #ddd;">${e.pEnergiaKwh.toFixed(5)}</td><td style="padding:5px 6px;border:1px solid #ddd;">${e.pFixoDia.toFixed(5)}</td></tr>`}).join("");let v="";if(p){const e=h.find(e=>e!==p&&"Pessoal"!==e.tipo);if(e){const t=p.total-e.total;v=t>.01?`<p style="background:#f0fdf4;padding:8px 12px;border-radius:6px;border-left:4px solid #22c55e;font-size:0.82rem;"><strong>💡 Poupança potencial:</strong> Ao trocar de <strong>${p.nomeOriginal}</strong> (${p.total.toFixed(2)} €) para <strong>${e.comercializador} — ${e.nomeOriginal}</strong> (${e.total.toFixed(2)} €), pouparia <strong>${t.toFixed(2)} €</strong> neste período.</p>`:'<p style="background:#f0fdf4;padding:8px 12px;border-radius:6px;border-left:4px solid #22c55e;font-size:0.82rem;"><strong>✅ O seu tarifário já é competitivo!</strong></p>'}}const y=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tiago_Felicia_Gas_Natural_Relatorio_${(new Date).toISOString().split("T")[0]}</title>\n        <style>@page{size:portrait;margin:15mm;}body{font-family:'Segoe UI',Arial,sans-serif;max-width:100%;margin:0 auto;padding:20px;color:#1e293b;font-size:12px;}h1{font-size:1.4rem;border-bottom:3px solid #d97706;padding-bottom:10px;margin-bottom:5px;}h2{font-size:1rem;color:#d97706;margin-top:20px;margin-bottom:10px;}.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:10px 0;}.info-item{background:#f8fafc;padding:6px 10px;border-radius:4px;border-left:3px solid #d97706;}.info-label{font-size:0.7rem;color:#64748b;}.info-value{font-size:0.82rem;font-weight:600;}table{width:100%;border-collapse:collapse;font-size:0.8rem;margin:10px 0;}th{background:#f1f5f9;padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:0.75rem;}td{text-align:center;}.footer{margin-top:20px;padding-top:10px;border-top:1px solid #ddd;font-size:0.7rem;color:#94a3b8;text-align:center;}@media print{body{padding:0;}}</style></head><body>\n        <h1>🔥 Relatório — Simulação Gás Natural</h1>\n        <p style="color:#64748b;font-size:0.8rem;margin-top:2px;">Gerado em ${(new Date).toLocaleDateString("pt-PT")} às ${(new Date).toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})} — www.tiagofelicia.pt</p>\n        <h2>📋 Dados da Simulação</h2>\n        <div class="info-grid">\n            <div class="info-item" style="grid-column:1/-1;"><div class="info-value">Segmento: ${c} &nbsp;|&nbsp; Faturação: ${d} &nbsp;|&nbsp; Pagamento: ${u} &nbsp;|&nbsp; Tipos: ${g}</div></div>\n            <div class="info-item"><div class="info-label">Período</div><div class="info-value">${e(i)} a ${e(l)} (${n} dias)</div></div>\n            <div class="info-item"><div class="info-label">Escalão</div><div class="info-value">${{1:"Escalão 1",2:"Escalão 2",3:"Escalão 3",4:"Escalão 4"}[t]||t}</div></div>\n            <div class="info-item"><div class="info-label">Município</div><div class="info-value">${o}</div></div>\n            <div class="info-item"><div class="info-label">Consumo</div><div class="info-value">${a} kWh</div></div>\n            <div class="info-item"><div class="info-label">MIBGAS</div><div class="info-value">${r.toFixed(2)} €/MWh</div></div>\n            ${s?'<div class="info-item" style="border-left-color:#22c55e;"><div class="info-label">Benefício</div><div class="info-value">Tarifa Social</div></div>':""}\n        </div>\n        <h2>🏆 Comparação de Tarifários | Tiago Felícia</h2>\n        <table><thead><tr><th style="width:5%;">#</th><th style="width:45%;">Tarifário</th><th style="width:15%;">Total (€)</th><th style="width:18%;">Energia (€/kWh)</th><th style="width:17%;">Fixo (€/dia)</th></tr></thead><tbody>${E}</tbody></table>\n        ${v}\n        <div class="footer">Simulador de Tarifários de Gás Natural | Tiago Felícia — www.tiagofelicia.pt<br>Este relatório é uma estimativa baseada nos dados fornecidos. Os valores reais podem variar.</div>\n    </body></html>`,x=window.open("","_blank");x.document.write(y),x.document.close(),setTimeout(()=>x.print(),500)}async function loadExcelJS(){if("undefined"==typeof ExcelJS)return new Promise((e,t)=>{const o=document.createElement("script");o.src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js",o.onload=e,o.onerror=()=>t(new Error("ExcelJS falhou")),document.head.appendChild(o)})}async function exportarExcel(){await loadExcelJS();try{const e=window.ExcelJS;if(!e)return void alert("Biblioteca ExcelJS não carregada.");const t=document.getElementById("sel_escalao").value,o=document.getElementById("sel_municipio").value,a=document.getElementById("consumo_kwh").value,n=getDias(),i=formatDatePT(document.getElementById("d_inicio").value),l=formatDatePT(document.getElementById("d_fim").value),r=getMibgasMwh(),s=document.getElementById("filtro_segmento").value,c=document.getElementById("filtro_faturacao").value||"Todas",d=document.getElementById("filtro_pagamento").value||"Todos",u=Array.from(document.querySelectorAll(".chk-tipo:checked")).map(e=>e.value),m=2===u.length?"Todos":u.join(", ")||"Nenhum",g={Fixo:{bg:"F0F0F0",fg:"333333"},Indexado:{bg:"FFE699",fg:"000000"},Pessoal_Meu:{bg:"FF0000",fg:"FFFFFF"},Pessoal_Pers:{bg:"92D050",fg:"000000"}},p=(e,t,o)=>{if(isNaN(e)||t===o)return{bg:"FFFFFF",fg:"000000"};const a=(t+o)/2,n=[90,138,198],i=[255,255,255],l=[247,150,70];let r,s,c;if(e<=a){const o=(e-t)/(a-t);r=Math.round(n[0]*(1-o)+i[0]*o),s=Math.round(n[1]*(1-o)+i[1]*o),c=Math.round(n[2]*(1-o)+i[2]*o)}else{const t=(e-a)/(o-a);r=Math.round(i[0]*(1-t)+l[0]*t),s=Math.round(i[1]*(1-t)+l[1]*t),c=Math.round(i[2]*(1-t)+l[2]*t)}const d=.299*r+.587*s+.114*c;return{bg:[r,s,c].map(e=>e.toString(16).padStart(2,"0")).join("").toUpperCase(),fg:d>140?"000000":"FFFFFF"}},f=new e.Workbook,h=f.addWorksheet("Gás Natural"),_={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFFF"}},E={top:{style:"thin",color:{argb:"000000"}},left:{style:"thin",color:{argb:"000000"}},bottom:{style:"thin",color:{argb:"000000"}},right:{style:"thin",color:{argb:"000000"}}};let v=1;const y=5;h.mergeCells(v,1,v,y),h.getCell(v,1).value="Resumo da Simulação (Gás Natural):",h.getCell(v,1).font={bold:!0,size:12},h.getCell(v,1).fill=_,v++;const x=(e,t)=>{h.getCell(v,1).value=e,h.getCell(v,1).font={bold:!0,size:10},h.getCell(v,1).fill=_,h.getCell(v,1).alignment={vertical:"middle"},h.mergeCells(v,2,v,y),h.getCell(v,2).value=t,h.getCell(v,2).font={size:10},h.getCell(v,2).fill=_,h.getCell(v,2).alignment={vertical:"middle"},v++};h.mergeCells(v,1,v,y),h.getCell(v,1).value=`Segmento: ${s}   |   Faturação: ${c}   |   Pagamento: ${d}   |   Tipos: ${m}`,h.getCell(v,1).font={bold:!0,size:10},h.getCell(v,1).fill=_,v++,x("Escalão / Município:",`Escalão ${t} | ${o}`),x("Consumo:",`${a} kWh`),x("Período:",`De ${i} a ${l} (${n} dias)`),x("MIBGAS:",`${r.toFixed(2)} €/MWh`),v++,h.mergeCells(v,1,v,y);const b=(new Date).toLocaleDateString("pt-PT"),I=" ".repeat(30);h.getCell(v,1).value=`          Simulação em ${b}${I}https://www.tiagofelicia.pt${I}Tiago Felícia`,h.getCell(v,1).font={bold:!0,size:9},h.getCell(v,1).fill=_,h.getCell(v,1).alignment={horizontal:"left",vertical:"middle",wrapText:!0},h.getRow(v).height=25,v+=2;const T={bg:"A6A6A6",fg:"000000"};["Tarifário","Total (€)","Energia (€/kWh)","Fixo (€/dia)","Tipo"].forEach((e,t)=>{const o=h.getCell(v,t+1);o.value=e,o.font={bold:!0,color:{argb:T.fg}},o.fill={type:"pattern",pattern:"solid",fgColor:{argb:T.bg}},o.alignment={horizontal:"center",vertical:"middle",wrapText:!0},o.border=E}),v++;const S=RESULTADOS_COMPLETOS.map(e=>e.total),k=RESULTADOS_COMPLETOS.map(e=>e.pEnergiaKwh),C=RESULTADOS_COMPLETOS.map(e=>e.pFixoDia),B={total:{min:Math.min(...S),max:Math.max(...S)},energia:{min:Math.min(...k),max:Math.max(...k)},fixo:{min:Math.min(...C),max:Math.max(...C)}};RESULTADOS_COMPLETOS.forEach(e=>{const t=e.nome.includes("O Meu Tarifário")?g.Pessoal_Meu:"Pessoal"===e.tipo?g.Pessoal_Pers:g[e.tipo]||g.Fixo,o=h.getCell(v,1);o.value=e.nome,o.fill={type:"pattern",pattern:"solid",fgColor:{argb:t.bg}},o.font={color:{argb:t.fg},bold:"Pessoal"===e.tipo},o.alignment={wrapText:!0,vertical:"middle",horizontal:"center"};const a=p(e.total,B.total.min,B.total.max),n=h.getCell(v,2);n.value=e.total,n.numFmt="€ #,##0.00",n.fill={type:"pattern",pattern:"solid",fgColor:{argb:a.bg}},n.font={color:{argb:a.fg}},n.alignment={horizontal:"center"};const i=p(e.pEnergiaKwh,B.energia.min,B.energia.max),l=h.getCell(v,3);l.value=e.pEnergiaKwh,l.numFmt="0.00000",l.fill={type:"pattern",pattern:"solid",fgColor:{argb:i.bg}},l.font={color:{argb:i.fg}},l.alignment={horizontal:"center"};const r=p(e.pFixoDia,B.fixo.min,B.fixo.max),s=h.getCell(v,4);s.value=e.pFixoDia,s.numFmt="0.00000",s.fill={type:"pattern",pattern:"solid",fgColor:{argb:r.bg}},s.font={color:{argb:r.fg}},s.alignment={horizontal:"center"};const c=h.getCell(v,5);c.value=e.tipo,c.fill={type:"pattern",pattern:"solid",fgColor:{argb:t.bg}},c.font={color:{argb:t.fg},bold:"Pessoal"===e.tipo},c.alignment={horizontal:"center",vertical:"middle"},v++}),v+=1,h.mergeCells(v,1,v,y),h.getCell(v,1).value="Tipos de Tarifário:",h.getCell(v,1).font={bold:!0},h.getCell(v,1).fill=_,v++;const A=[{bg:"FFE699",fg:"000000",nome:"Indexado",desc:"Preço baseado no MIBGAS."},{bg:"F0F0F0",fg:"333333",nome:"Fixo",desc:"Preços de energia constantes."}];document.getElementById("chk_meu_ativo").checked&&A.unshift({bg:"FF0000",fg:"FFFFFF",nome:"O Meu Tarifário",desc:"Configurado pelo utilizador."}),document.getElementById("chk_pers_ativo").checked&&A.splice(document.getElementById("chk_meu_ativo").checked?1:0,0,{bg:"92D050",fg:"000000",nome:"Personalizado",desc:"Configurado pelo utilizador."}),A.forEach(e=>{h.getCell(v,1).value=e.nome,h.getCell(v,1).fill={type:"pattern",pattern:"solid",fgColor:{argb:e.bg}},h.getCell(v,1).font={color:{argb:e.fg},bold:!0},h.getCell(v,1).alignment={horizontal:"center"},h.mergeCells(v,2,v,y),h.getCell(v,2).value=e.desc,h.getCell(v,2).fill=_,v++}),h.getColumn(1).width=95,h.getColumn(2).width=16,h.getColumn(3).width=18,h.getColumn(4).width=16,h.getColumn(5).width=16;const D=await f.xlsx.writeBuffer(),F=new Blob([D],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),w=URL.createObjectURL(F),L=document.createElement("a");L.href=w,L.download="Simulacao_Gas_Natural_Tiago_Felicia.xlsx",L.click(),URL.revokeObjectURL(w)}catch(e){console.error("Erro exportação Excel:",e),alert("Erro ao exportar Excel: "+e.message)}}function gerarLinkPartilha(){try{const e=new URLSearchParams;e.set("esc",document.getElementById("sel_escalao").value),e.set("mun",document.getElementById("sel_municipio").value);const t=(document.getElementById("d_inicio").value||"").replace(/-/g,""),o=(document.getElementById("d_fim").value||"").replace(/-/g,"");t&&e.set("a",t),o&&e.set("b",o);const a=document.getElementById("consumo_kwh").value;if(a&&"135"!==a&&e.set("kwh",a),"m3"===document.querySelector('input[name="input_mode"]:checked').value){e.set("im","m3"),e.set("m3",document.getElementById("consumo_m3").value);const t=document.getElementById("fator_pcs").value;"11.25"!==t&&e.set("pcs",t)}const n=document.getElementById("mibgas_input").value;e.set("mib",n);let i="";document.getElementById("chk_ts").checked&&(i+="T"),document.getElementById("chk_acp").checked||(i+="a"),i&&e.set("fl",i);const l=document.getElementById("isp_input").value;if(l!==String(C("ISP_Gas_eur_kwh"))&&e.set("isp",l),document.getElementById("chk_meu_ativo").checked){const t=["meu_energia","meu_fixo","meu_desc_energia_perc","meu_desc_fixo_perc","meu_desc_fatura","meu_acres_fatura"].map(e=>document.getElementById(e).value||"0").join(",");e.set("m",t);let o="";document.getElementById("meu_tar_energia").checked&&(o+="e"),document.getElementById("meu_tar_fixo").checked&&(o+="f"),o&&e.set("mf",o)}if(document.getElementById("chk_pers_ativo").checked){const t=[document.getElementById("pers_energia").value,document.getElementById("pers_fixo").value].join(",");e.set("x",t);let o="";document.getElementById("pers_tar_energia").checked&&(o+="e"),document.getElementById("pers_tar_fixo").checked&&(o+="f"),o&&e.set("xf",o)}const r=document.getElementById("filtro_segmento").value;"Residencial"!==r&&e.set("sg",r.charAt(0));const s=Array.from(document.querySelectorAll(".chk-tipo:checked")).map(e=>e.value);1===s.length&&e.set("tp",s[0].charAt(0));const c=window.location.origin+window.location.pathname+"?g=1&"+e.toString();navigator.clipboard.writeText(c).then(()=>{const e=document.getElementById("btn-partilhar"),t=e.innerHTML;e.innerHTML='<i class="fa-solid fa-check"></i> Link Copiado!',e.style.background="#16a34a",e.style.color="white",e.style.borderColor="#16a34a",setTimeout(()=>{e.innerHTML=t,e.style.background="white",e.style.color="var(--primary)",e.style.borderColor="var(--primary)"},2500)}).catch(()=>{prompt("Copie o link abaixo:",c)})}catch(e){console.error("Erro link partilha:",e),alert("Erro ao gerar link.")}}function aplicarParametrosPartilha(){const e=new URLSearchParams(window.location.search);if(!e.has("g"))return!1;const t=(e,t)=>{const o=document.getElementById(e);o&&null!=t&&(o.value=t)},o=(e,t)=>{const o=document.getElementById(e);o&&(o.checked=!!t)};try{e.get("esc")&&t("sel_escalao",e.get("esc")),onEscalaoChange(),e.get("mun")&&t("sel_municipio",e.get("mun"));const a=e.get("a")||"",n=e.get("b")||"";8===a.length&&t("d_inicio",a.slice(0,4)+"-"+a.slice(4,6)+"-"+a.slice(6,8)),8===n.length&&t("d_fim",n.slice(0,4)+"-"+n.slice(4,6)+"-"+n.slice(6,8)),atualizarDiasDisplay(),"m3"===e.get("im")&&(document.querySelectorAll('input[name="input_mode"]').forEach(e=>e.checked="m3"===e.value),toggleInputMode(),e.get("m3")&&t("consumo_m3",e.get("m3")),e.get("pcs")&&t("fator_pcs",e.get("pcs")),updateKwhFromM3()),e.get("kwh")&&t("consumo_kwh",e.get("kwh")),e.get("mib")&&t("mibgas_input",e.get("mib")),e.get("isp")&&t("isp_input",e.get("isp"));const i=e.get("fl")||"";if(o("chk_ts",i.includes("T")),i.includes("a")&&o("chk_acp",!1),e.get("m")){o("chk_meu_ativo",!0),document.getElementById("meu-campos").classList.remove("hidden");const a=e.get("m").split(",");["meu_energia","meu_fixo","meu_desc_energia_perc","meu_desc_fixo_perc","meu_desc_fatura","meu_acres_fatura"].forEach((e,o)=>t(e,a[o]||"0"));const n=e.get("mf")||"";o("meu_tar_energia",n.includes("e")),o("meu_tar_fixo",n.includes("f"))}if(e.get("x")){o("chk_pers_ativo",!0),document.getElementById("pers-campos").classList.remove("hidden");const a=e.get("x").split(",");t("pers_energia",a[0]||"0"),t("pers_fixo",a[1]||"0");const n=e.get("xf")||"";o("pers_tar_energia",n.includes("e")),o("pers_tar_fixo",n.includes("f"))}const l={R:"Residencial",E:"Empresarial",A:"Ambos"};e.get("sg")&&t("filtro_segmento",l[e.get("sg")]||e.get("sg"));const r={F:"Fixo",I:"Indexado"};if(e.get("tp")){const t=r[e.get("tp")];t&&document.querySelectorAll(".chk-tipo").forEach(e=>{e.checked=e.value===t})}return!0}catch(e){return console.error("Erro ao aplicar params:",e),!1}}document.addEventListener("touchstart",function(){hideTT(),hideTooltipNome()},{passive:!0});let QUICK_STATE={kwh:135,escalao:1,tariffType:"all",excludedProviders:new Set,lastCalc:!1};function qSelectPrice(e){document.querySelectorAll(".price-button").forEach(e=>e.classList.remove("selected")),document.getElementById("qprice-"+e).classList.add("selected");const t={15:{kwh:135,esc:1},35:{kwh:300,esc:2},60:{kwh:600,esc:3},100:{kwh:1e3,esc:4}}[e];QUICK_STATE.kwh=t.kwh,QUICK_STATE.escalao=t.esc,document.getElementById("quick-kwh").value=t.kwh,document.querySelectorAll("#tab-quick .power-button").forEach(e=>e.classList.remove("selected")),document.getElementById("qesc-"+t.esc).classList.add("selected"),runQuickSim()}function qSelectEscalao(e){document.querySelectorAll("#tab-quick .power-button").forEach(e=>e.classList.remove("selected")),document.getElementById("qesc-"+e).classList.add("selected"),QUICK_STATE.escalao=e,document.querySelectorAll(".price-button").forEach(e=>e.classList.remove("selected")),runQuickSim()}function qAutoCalc(){const e=parseFloat(document.getElementById("quick-kwh").value);QUICK_STATE.kwh=isNaN(e)?135:Math.max(0,e);const t=document.getElementById("alerta-quick-negativo");t&&t.classList.toggle("hidden",!(e<0)),document.querySelectorAll(".price-button").forEach(e=>e.classList.remove("selected")),runQuickSim()}function qSelectType(e){document.querySelectorAll("#qtariff-all, #qtariff-fixed").forEach(e=>e.classList.remove("selected")),document.getElementById("qtariff-"+e).classList.add("selected"),QUICK_STATE.tariffType=e,runQuickSim()}function toggleQuickProviders(){const e=document.getElementById("quick-providers-content");e.classList.toggle("hidden"),document.getElementById("quick-providers-icon").className=e.classList.contains("hidden")?"fa-solid fa-chevron-down":"fa-solid fa-chevron-up"}function qToggleProvider(e){const t=e.value;e.checked?QUICK_STATE.excludedProviders.add(t):QUICK_STATE.excludedProviders.delete(t),runQuickSim()}function populateQuickProviders(){const e=[...new Set(DATA.tarifarios.map(e=>(e.Comercializador||"").trim()).filter(Boolean))].sort(),t=document.getElementById("quick-provider-filters");if(!t)return;t.innerHTML="";const o=document.createElement("button");o.textContent="☑ Selecionar / Desselecionar Todos",o.style.cssText="grid-column:1/-1; padding:6px 10px; border:1px solid var(--border); border-radius:6px; cursor:pointer; font-size:0.78rem; font-weight:600; background:var(--bg); color:var(--text-main); margin-bottom:4px;",o.onclick=function(){const o=t.querySelectorAll('input[type="checkbox"]'),a=Array.from(o).every(e=>e.checked);o.forEach(e=>{e.checked=!a}),QUICK_STATE.excludedProviders.clear(),a||e.forEach(e=>QUICK_STATE.excludedProviders.add(e)),runQuickSim()},t.appendChild(o),e.forEach(e=>{const o=document.createElement("label");o.className="provider-checkbox";const a=document.createElement("input");a.type="checkbox",a.value=e,a.onchange=function(){qToggleProvider(this)},o.appendChild(a),o.appendChild(document.createTextNode(e)),t.appendChild(o)})}function runQuickSim(){if(!DATA.tarifarios.length)return;QUICK_STATE.lastCalc=!0,document.getElementById("sel_escalao").value=QUICK_STATE.escalao,document.getElementById("consumo_kwh").value=QUICK_STATE.kwh,document.querySelectorAll(".chk-tipo").forEach(e=>{"fixed"===QUICK_STATE.tariffType?e.checked="Fixo"===e.value:e.checked=!0}),EXCLUDED_PROVIDERS=new Set(QUICK_STATE.excludedProviders),document.querySelectorAll('#provider-filters input[type="checkbox"]').forEach(e=>{e.checked=EXCLUDED_PROVIDERS.has(e.value)}),calcular();let e=RESULTADOS_COMPLETOS.filter(e=>{if("Pessoal"===e.tipo)return!1;const t=e.segmento;return!("Doméstico"!==t&&"Doméstico e Não Doméstico"!==t||QUICK_STATE.excludedProviders.has(e.comercializador)||"fixed"===QUICK_STATE.tariffType&&"Fixo"!==e.tipo)});const t=new Map;e.forEach(e=>{const o=e.nomeOriginal;(!t.has(o)||e.total<t.get(o).total)&&t.set(o,e)}),e=[...t.values()].sort((e,t)=>e.total-t.total),renderQuickPodium(e)}function renderQuickPodium(e){const t=document.getElementById("quick-podium"),o=e.slice(0,3),a=["🥇","🥈","🥉"],n=["first","second","third"];let i="";for(let e=0;e<3;e++)if(o[e]){const t=o[e],l=0===e?0:t.total-o[0].total,r="Fixo"===t.tipo?'<span style="font-size:0.65rem; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;">Fixo</span>':'<span style="font-size:0.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:4px;">Indexado</span>';i+=`<div class="podium-item ${n[e]}">\n                <div class="podium-medal">${a[e]}</div>\n                <div class="podium-name">${t.comercializador}</div>\n                <div class="podium-tariff">${t.nomeOriginal}</div>\n                ${r}\n                <div class="podium-price">${t.total.toFixed(2)}€<span style="font-size:0.5em; color:#64748b; font-weight:400;">/mês</span></div>\n                ${0===e?'<div style="color:var(--success); font-size:0.75rem; margin-top:4px; font-weight:600;">✓ Melhor oferta</div>':`<div style="color:#dc2626; font-size:0.75rem; margin-top:4px;">+${Math.abs(l).toFixed(0)}€ / mês</div>`}\n            </div>`}else i+=`<div class="podium-item ${n[e]}" style="opacity:0.5; background:#f1f5f9;">\n                <div class="podium-medal" style="filter:grayscale(1);">${a[e]}</div>\n                <div class="podium-name" style="color:#94a3b8;">---</div>\n                <div class="podium-price" style="color:#cbd5e1;">-</div>\n            </div>`;t.innerHTML=i}const STORAGE_KEY_GAS="tf_cenarios_gas_v1";function obterCenarios(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY_GAS)||"[]")}catch(e){return[]}}function guardarCenariosLS(e){try{localStorage.setItem(STORAGE_KEY_GAS,JSON.stringify(e))}catch(e){}}function capturarEstado(){const e={},t=document.getElementById("chk-guardar-datas")?.checked??!0;e.guardarDatas=t,e.sel_escalao=document.getElementById("sel_escalao")?.value||"1",e.sel_municipio=document.getElementById("sel_municipio")?.value||"",e.consumo_kwh=document.getElementById("consumo_kwh")?.value||"135";const o=document.querySelector('input[name="input_mode"][value="m3"]');return e.input_mode=o?.checked?"m3":"kwh",e.consumo_m3=document.getElementById("consumo_m3")?.value||"",e.fator_pcs=document.getElementById("fator_pcs")?.value||"",t&&(e.d_inicio=document.getElementById("d_inicio")?.value||"",e.d_fim=document.getElementById("d_fim")?.value||""),e.mibgas_input=document.getElementById("mibgas_input")?.value||"",e.isp_input=document.getElementById("isp_input")?.value||"",["chk_ts","chk_acp","chk_meu_ativo","chk_pers_ativo"].forEach(t=>{const o=document.getElementById(t);o&&(e[t]=o.checked)}),["meu_energia","meu_fixo","meu_desc_energia_perc","meu_desc_fixo_perc","meu_desc_fatura","meu_acres_fatura","pers_energia","pers_fixo"].forEach(t=>{const o=document.getElementById(t);o&&(e[t]=o.value)}),["meu_tar_energia","meu_tar_fixo","pers_tar_energia","pers_tar_fixo"].forEach(t=>{const o=document.getElementById(t);o&&(e[t]=o.checked)}),["filtro_segmento","filtro_faturacao","filtro_pagamento"].forEach(t=>{const o=document.getElementById(t);o&&(e[t]=o.value)}),e.chk_tipos=Array.from(document.querySelectorAll(".chk-tipo")).map(e=>({value:e.value,checked:e.checked})),e.f_procura=document.getElementById("f_procura")?.value||"",e.excludedProviders=[...EXCLUDED_PROVIDERS],e}function aplicarEstado(e){if(e){if(e.sel_escalao&&(document.getElementById("sel_escalao").value=e.sel_escalao),e.sel_municipio&&(document.getElementById("sel_municipio").value=e.sel_municipio),"m3"===e.input_mode?(document.querySelectorAll('input[name="input_mode"]').forEach(e=>e.checked="m3"===e.value),toggleInputMode(),e.consumo_m3&&(document.getElementById("consumo_m3").value=e.consumo_m3),e.fator_pcs&&(document.getElementById("fator_pcs").value=e.fator_pcs),updateKwhFromM3()):(document.querySelectorAll('input[name="input_mode"]').forEach(e=>e.checked="kwh"===e.value),toggleInputMode()),e.consumo_kwh&&(document.getElementById("consumo_kwh").value=e.consumo_kwh),!1!==e.guardarDatas&&e.d_inicio&&(document.getElementById("d_inicio").value=e.d_inicio,document.getElementById("d_fim").value=e.d_fim),e.mibgas_input&&(document.getElementById("mibgas_input").value=e.mibgas_input),e.isp_input&&(document.getElementById("isp_input").value=e.isp_input),["chk_ts","chk_acp","chk_meu_ativo","chk_pers_ativo"].forEach(t=>{const o=document.getElementById(t);o&&void 0!==e[t]&&(o.checked=e[t])}),["meu_energia","meu_fixo","meu_desc_energia_perc","meu_desc_fixo_perc","meu_desc_fatura","meu_acres_fatura","pers_energia","pers_fixo"].forEach(t=>{const o=document.getElementById(t);o&&void 0!==e[t]&&(o.value=e[t])}),["meu_tar_energia","meu_tar_fixo","pers_tar_energia","pers_tar_fixo"].forEach(t=>{const o=document.getElementById(t);o&&void 0!==e[t]&&(o.checked=e[t])}),["filtro_segmento","filtro_faturacao","filtro_pagamento"].forEach(t=>{const o=document.getElementById(t);o&&void 0!==e[t]&&(o.value=e[t])}),e.chk_tipos&&document.querySelectorAll(".chk-tipo").forEach(t=>{const o=e.chk_tipos.find(e=>e.value===t.value);o&&(t.checked=o.checked)}),void 0!==e.f_procura){const t=document.getElementById("f_procura");t&&(t.value=e.f_procura)}e.excludedProviders&&(EXCLUDED_PROVIDERS=new Set(e.excludedProviders),document.querySelectorAll('#provider-filters input[type="checkbox"]').forEach(e=>e.checked=EXCLUDED_PROVIDERS.has(e.value))),document.getElementById("meu-campos")?.classList.toggle("hidden",!e.chk_meu_ativo),document.getElementById("pers-campos")?.classList.toggle("hidden",!e.chk_pers_ativo),setTimeout(()=>calcular(),50)}}function guardarCenario(){const e=document.getElementById("input-nome-cenario")?.value?.trim();if(!e)return void alert("Introduza um nome para o cenário.");const t=obterCenarios(),o=document.getElementById("chk-guardar-datas")?.checked??!0,a=document.getElementById("sel_escalao")?.value||"1",n=document.getElementById("sel_municipio")?.value||"?",i=document.getElementById("consumo_kwh")?.value||"?";let l=`${{1:"E1",2:"E2",3:"E3",4:"E4"}[a]||a} · ${n} · ${i} kWh`;if(o){const e=e=>e?e.split("-").reverse().join("/"):"?";l+=` · ${e(document.getElementById("d_inicio")?.value)} a ${e(document.getElementById("d_fim")?.value)}`}t.unshift({nome:e,estado:capturarEstado(),resumo:l,data:(new Date).toLocaleDateString("pt-PT")}),t.length>10&&(t.length=10),guardarCenariosLS(t),document.getElementById("input-nome-cenario").value="",renderizarListaCenarios()}function carregarCenario(e){const t=obterCenarios();t[e]&&(aplicarEstado(t[e].estado),fecharModalCenarios())}function apagarCenario(e){const t=obterCenarios();t.splice(e,1),guardarCenariosLS(t),renderizarListaCenarios()}function renderizarListaCenarios(){const e=document.getElementById("lista-cenarios"),t=obterCenarios();t.length?e.innerHTML=t.map((e,t)=>`\n        <div class="saved-item">\n            <div class="saved-info" onclick="carregarCenario(${t})" title="Clique para carregar">\n                <div class="saved-name">${e.nome}</div>\n                <div class="saved-meta">${e.resumo||""} · ${e.data||""}</div>\n            </div>\n            <div class="saved-actions">\n                <button class="btn-load" onclick="carregarCenario(${t})" title="Carregar"><i class="fa-solid fa-upload"></i></button>\n                <button class="btn-del" onclick="apagarCenario(${t})" title="Apagar"><i class="fa-solid fa-trash"></i></button>\n            </div>\n        </div>`).join(""):e.innerHTML='<p style="text-align:center;color:var(--text-light);font-size:0.85rem;padding:20px 0;">Nenhum cenário guardado</p>'}function abrirModalCenarios(){renderizarListaCenarios(),document.getElementById("modal-cenarios").classList.add("open")}function fecharModalCenarios(){document.getElementById("modal-cenarios").classList.remove("open")}function reiniciar(){document.getElementById("sel_escalao").value="1",document.getElementById("consumo_kwh").value="135",document.getElementById("chk_ts").checked=!1,document.getElementById("chk_acp").checked=!0,document.getElementById("chk_meu_ativo").checked=!1,document.getElementById("chk_pers_ativo").checked=!1,atualizarDefaultsMeuPers(1),document.getElementById("filtro_segmento").value="Residencial",document.querySelectorAll(".chk-tipo").forEach(e=>e.checked=!0),document.getElementById("filtro_faturacao").value="",document.getElementById("filtro_pagamento").value="",inicializarDatas(),atualizarMibgasDefault();const e=C("ISP_Gas_eur_kwh");e>0&&(document.getElementById("isp_input").value=e),calcular()}document.addEventListener("keydown",e=>{"Escape"===e.key&&fecharModalCenarios()}),document.addEventListener("DOMContentLoaded",()=>{"dark"===document.documentElement.getAttribute("data-theme")&&(document.getElementById("dark-icon").className="fas fa-sun"),window._HAS_SHARED_PARAMS=new URLSearchParams(window.location.search).has("g"),carregarDados()});</script>
+
+</body>
+</html>
