@@ -333,8 +333,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Atualiza a tabela se a checkbox estiver ativa
         if (document.getElementById("checkboxSimular").checked) {
-            prepararDadosTabela(dia, tarifario, opcao);
+            document.getElementById("tipoTabelaContainer").style.display = "block";
+            const tipoSelecionado = document.querySelector('input[name="tipoTabela"]:checked')?.value || "horaria";
+            if (tipoSelecionado === "quartohoraria") {
+                prepararDadosQuartoHoraria(dia, tarifario, opcao);
+            } else {
+                prepararDadosTabela(dia, tarifario, opcao);
+            }
             document.getElementById("tabelaContainer").style.display = "block";
+        }
+
+        // Guard: se o Highcharts não carregou (teste local), não crashar
+        if (typeof Highcharts === 'undefined') {
+            const container = document.getElementById("container-chart");
+            if (container) container.innerHTML = "<p style='color:orange; text-align:center; padding:20px;'>⚠️ Highcharts não disponível (teste local). O gráfico requer ligação ao CDN.</p>";
+            return;
         }
 
         // Lógica de Quartis
@@ -360,9 +373,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const isHoje = (dia === hojeEmLisboaDDMMYYYY);
         const qhIndex = (horaAtualLisboa * 4) + Math.floor(minutoAtualLisboa / 15);
 
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const chartTextColor = isDark ? '#e2e8f0' : '#333';
+        const chartBg = isDark ? '#1e293b' : '#ffffff';
+        const omieLineColor = isDark ? '#e2e8f0' : 'black';
+
         let xAxisConfig = {
             categories: dados.categorias,
-            labels: { rotation: -45, style: { fontSize: '10px' } },
+            labels: { rotation: -45, style: { fontSize: '10px', color: chartTextColor } },
             plotBands: [],
             crosshair: true
         };
@@ -386,18 +404,21 @@ document.addEventListener('DOMContentLoaded', function () {
         chartInstance = Highcharts.chart("container-chart", {
             chart: { 
                 type: "column",
-                marginTop: 30
+                marginTop: 30,
+                backgroundColor: chartBg,
+                style: { color: chartTextColor }
             },
-            title: { text: `${tarifario} | ${opcao} | ${dia}` },
+            title: { text: `${tarifario} | ${opcao} | ${dia}`, style: { color: chartTextColor } },
             xAxis: xAxisConfig,
-            yAxis: { title: { text: "" }, labels: { formatter: function () { return `${this.value} €/kWh`; } } },
+            yAxis: { title: { text: "", style: { color: chartTextColor } }, labels: { formatter: function () { return `${this.value} €/kWh`; }, style: { color: chartTextColor } } },
+            legend: { itemStyle: { color: chartTextColor } },
             tooltip: { pointFormatter: function () { return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${formatValue(this.y)}</b><br/>`; } },
             series: [
                 { name: "Baixo", color: "#548235", data: stack1.map(v => ({ y: v, color: v < 0 ? 'red' : '#548235' })), stack: "stack1", pointWidth: 9 },
                 { name: "Baixo/Médio", color: "#C5E0B4", data: stack2.map(v => ({ y: v, color: v < 0 ? 'red' : '#C5E0B4' })), stack: "stack1", pointWidth: 9 },
                 { name: "Médio/Elevado", color: "#FFD966", data: stack3.map(v => ({ y: v, color: v < 0 ? 'red' : '#FFD966' })), stack: "stack1", pointWidth: 9 },
                 { name: "Elevado", color: "red", data: stack4.map(v => ({ y: v, color: v < 0 ? 'red' : 'red' })), stack: "stack1", pointWidth: 9 },
-                { name: "OMIE PT", type: "line", data: dados.omie, color: "black", marker: { enabled: false } },
+                { name: "OMIE PT", type: "line", data: dados.omie, color: omieLineColor, marker: { enabled: false } },
                 { name: "TAR", type: "line", data: dados.tar, color: "#B4C7E7", marker: { enabled: false }, visible: false },
                 { name: "OMIE*Perdas+TAR", type: "line", data: dados.omieTar, color: "#D3B5E9", marker: { enabled: false }, visible: false }
             ],
@@ -420,7 +441,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 rotation: 0,
                                 step: 4,      // Mostra apenas de hora em hora (00:00, 01:00...) para não atulhar
                                 style: {
-                                    fontSize: '11px'
+                                    fontSize: '11px',
+                                    color: chartTextColor
                                 }
                             },
                             // Garante que desenha todas as grelhas, mesmo que não mostre o texto
@@ -430,11 +452,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             labels: {
                                 align: 'left',
                                 x: 0,
-                                y: -2
+                                y: -2,
+                                style: { color: chartTextColor }
                             },
                             title: {
                                 text: '€/kWh',
-                                align: 'high'
+                                align: 'high',
+                                style: { color: chartTextColor }
                             }
                         },
                         plotOptions: {
@@ -508,20 +532,45 @@ document.addEventListener('DOMContentLoaded', function () {
     window.controlarTabela = function() {
         const checkbox = document.getElementById("checkboxSimular");
         const tabelaContainer = document.getElementById("tabelaContainer");
+        const tipoTabelaContainer = document.getElementById("tipoTabelaContainer");
+        
         if (checkbox.checked) {
+            tipoTabelaContainer.style.display = "block";
+            
             const dia = document.getElementById("dropdownDia").value;
             const tarifario = document.getElementById("dropdownTarifario").value;
             const opcao = document.getElementById("dropdownOpcao").value;
-            prepararDadosTabela(dia, tarifario, opcao);
+            
+            const tipoSelecionado = document.querySelector('input[name="tipoTabela"]:checked').value;
+            
+            if (tipoSelecionado === "quartohoraria") {
+                prepararDadosQuartoHoraria(dia, tarifario, opcao);
+            } else {
+                prepararDadosTabela(dia, tarifario, opcao);
+            }
             tabelaContainer.style.display = "block";
         } else {
             tabelaContainer.style.display = "none";
+            tipoTabelaContainer.style.display = "none";
         }
     }
 
     // --- TABELA ---
 
+    function atualizarCabecalhosTabela(tipo) {
+        const isQH = (tipo === "quartohoraria");
+        const titulo = document.getElementById("tabelaTitulo");
+        const thHora = document.getElementById("thHora");
+        const thConsumo = document.getElementById("thConsumo");
+        const thCusto = document.getElementById("thCusto");
+        if (titulo) titulo.textContent = isQH ? "Tabela Quarto-horária" : "Tabela Horária";
+        if (thHora) thHora.textContent = isQH ? "Quarto-hora PT" : "Hora PT";
+        if (thConsumo) thConsumo.textContent = isQH ? "Consumo quarto-horário (kWh)" : "Consumo horário (kWh)";
+        if (thCusto) thCusto.textContent = isQH ? "Custo quarto-horário (€)" : "Custo horário (€)";
+    }
+
     function prepararDadosTabela(dia, tarifario, opcao) {
+        atualizarCabecalhosTabela("horaria");
         const linhas = dadosCSVGlobal.split("\n").filter(l => l.trim());
         const linhaTabelaIndex = linhas.findIndex(linha => linha.includes("TABELA_HORARIA"));
 
@@ -571,13 +620,64 @@ document.addEventListener('DOMContentLoaded', function () {
         renderizarTabela();
     }
 
+    // --- TABELA QUARTO-HORÁRIA (usa dados do gráfico) ---
+    function prepararDadosQuartoHoraria(dia, tarifario, opcao) {
+        atualizarCabecalhosTabela("quartohoraria");
+        const dados = dadosEstruturados[dia]?.[tarifario]?.[opcao];
+        if (!dados) return;
+
+        const subtitulo = document.querySelector("#subtituloTabela");
+        if (subtitulo) subtitulo.textContent = `${tarifario} | ${opcao} | ${dia} (Quarto-horária)`;
+
+        let omieValores = [];
+        let precoValores = [];
+        let novosDados = [];
+
+        for (let i = 0; i < dados.categorias.length; i++) {
+            const intervalo = dados.categorias[i];
+            const precoKwh = dados.colunas[i]; // Preço final €/kWh (mesmo que o gráfico)
+            const omieMWh = dados.omie[i];      // OMIE em €/MWh (convertemos para exibição)
+
+            // Converter OMIE de €/kWh (como vem no array) para €/MWh para a coluna da tabela
+            const omieParaTabela = (omieMWh !== null && omieMWh !== undefined) ? omieMWh * 1000 : null;
+
+            if (omieParaTabela !== null) omieValores.push(omieParaTabela);
+            if (precoKwh !== null) precoValores.push(precoKwh);
+
+            novosDados.push({
+                hora: intervalo,
+                omie: omieParaTabela,
+                precoMedio: precoKwh,
+                consumo: 0,
+                custo: 0
+            });
+        }
+
+        estadoTabela.dados = novosDados;
+        estadoTabela.quartisOmie = calcularQuartisEstatisticos(omieValores);
+        estadoTabela.quartisPreco = calcularQuartisEstatisticos(precoValores);
+        estadoTabela.colunaOrdenada = null;
+
+        configurarOrdenacao();
+        renderizarTabela();
+    }
+
     function renderizarTabela() {
         const corpoTabela = document.querySelector("#tabelaHoraria tbody");
         corpoTabela.innerHTML = "";
 
+        const isDarkTable = document.documentElement.getAttribute('data-theme') === 'dark';
+
         // Função de cor baseada nos quartis estatísticos
         const obterCorDeFundo = (valor, quartis) => {
-            if (valor === null || valor === undefined || isNaN(valor)) return 'white';
+            if (valor === null || valor === undefined || isNaN(valor)) return isDarkTable ? '#1e293b' : 'white';
+            
+            if (isDarkTable) {
+                if (valor <= quartis.q1) return "#2d5016"; // Baixo (verde escuro)
+                if (valor <= quartis.q2) return "#3a5a28"; // Baixo/Médio
+                if (valor <= quartis.q3) return "#5c4a10"; // Médio/Elevado (amarelo escuro)
+                return "#6b2020"; // Elevado (vermelho escuro)
+            }
             
             if (valor <= quartis.q1) return "#A9D08E"; // Baixo
             if (valor <= quartis.q2) return "#E2EFDA"; // Baixo/Médio

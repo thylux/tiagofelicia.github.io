@@ -23,10 +23,10 @@
     <link rel="manifest" href="/images/site.webmanifest" />
     <link rel="stylesheet" href="style.css" />
     
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/export-data.js"></script>
-    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highcharts/highcharts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highcharts/modules/exporting.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highcharts/modules/export-data.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highcharts/modules/accessibility.js"></script>
     
     <script type="application/ld+json">
     {
@@ -55,6 +55,8 @@
   </script>
 </head>
 <body>
+
+<button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">🌙</button>
 
 <header>
     <div class="header-content">
@@ -116,17 +118,24 @@
                 </label>
             </div>
 
+            <div id="tipoTabelaContainer" style="display:none;">
+                <div class="tipo-tabela-container">
+                    <label><input type="radio" name="tipoTabela" value="horaria" checked onchange="controlarTabela()"> <span>Tabela Horária</span></label>
+                    <label><input type="radio" name="tipoTabela" value="quartohoraria" onchange="controlarTabela()"> <span>Tabela Quarto-horária</span></label>
+                </div>
+            </div>
+
             <div id="tabelaContainer" style="display:none;">
-                <h3>Tabela Horária</h3>
+                <h3 id="tabelaTitulo">Tabela Horária</h3>
                 <p id="subtituloTabela"></p>
                 <table id="tabelaHoraria" border="1">
                     <thead>
                         <tr>
-                            <th>Hora PT</th>
+                            <th id="thHora">Hora PT</th>
                             <th>OMIE Médio (€/MWh)</th>
                             <th>Preço Médio (€/kWh)</th>
-                            <th>Consumo horário (kWh)</th>
-                            <th>Custo horário (€)</th>
+                            <th id="thConsumo">Consumo horário (kWh)</th>
+                            <th id="thCusto">Custo horário (€)</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -160,6 +169,26 @@
 <div id="footer-placeholder"></div>
 
     <style>
+        /* === DARK MODE — Estilos específicos desta página === */
+        [data-theme="dark"] #menu-placeholder { background: #0f172a !important; }
+        [data-theme="dark"] #container-chart { background: #1e293b; border-radius: 8px; }
+        [data-theme="dark"] #formula-container { background: #1e293b; border-color: #475569; border-left-color: #94a3b8; color: #cbd5e1; }
+        [data-theme="dark"] #formula-container .formula-titulo { color: #e2e8f0; }
+        [data-theme="dark"] #formula-container .formula-expr { background: #0f172a; border-color: #475569; color: #e2e8f0; }
+        [data-theme="dark"] #formula-container .formula-legenda { color: #94a3b8; }
+        [data-theme="dark"] #formula-container .formula-legenda span { color: #cbd5e1; }
+        [data-theme="dark"] #formula-details summary { color: #cbd5e1 !important; }
+        [data-theme="dark"] .input-consumo { background: #1e293b !important; color: #e2e8f0 !important; border-color: #475569 !important; }
+        [data-theme="dark"] .content-support { color: #cbd5e1; }
+        [data-theme="dark"] .tipo-tabela-container { background: #1e293b; border-color: #475569; }
+        [data-theme="dark"] .tipo-tabela-container label { color: #cbd5e1; }
+        [data-theme="dark"] .tipo-tabela-container input[type="radio"]:checked + span { color: #e2e8f0; }
+
+        /* === Estilos light desta página === */
+        .tipo-tabela-container { display: flex; gap: 20px; justify-content: center; align-items: center; margin: 10px auto; padding: 8px 16px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; max-width: 400px; font-size: 0.93em; }
+        .tipo-tabela-container label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .tipo-tabela-container input[type="radio"] { accent-color: #495057; }
+
         #formula-container {
             background: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -198,6 +227,7 @@
             color: #333;
         }
     </style>
+    <script src="theme.js"></script>
     <script src="script-horarios.js"></script>
     <script src="script.js"></script>
 </body>
