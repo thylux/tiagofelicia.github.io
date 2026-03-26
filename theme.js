@@ -16,10 +16,8 @@ function toggleDarkMode() {
     var btn = document.getElementById('btn-dark-mode');
     if (btn) btn.textContent = isDark ? '🌙' : '☀️';
     localStorage.setItem('theme_site', newTheme);
-    // Redesenhar gráfico (se existir na página)
-    if (typeof desenhaGrafico === 'function') {
-        try { desenhaGrafico(); } catch(e) {}
-    }
+    // Notificar a página para redesenhar gráficos, tabelas, etc.
+    document.dispatchEvent(new Event('themeChanged'));
 }
 
 // Inicialização imediata (corre antes do DOM estar pronto para evitar flash)
@@ -52,9 +50,7 @@ if (window.matchMedia) {
             document.documentElement.setAttribute('data-theme', newTheme);
             var btn = document.getElementById('btn-dark-mode');
             if (btn) btn.textContent = e.matches ? '☀️' : '🌙';
-            if (typeof desenhaGrafico === 'function') {
-                try { desenhaGrafico(); } catch(e2) {}
-            }
+            document.dispatchEvent(new Event('themeChanged'));
         }
     });
 }

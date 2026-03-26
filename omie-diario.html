@@ -119,9 +119,39 @@
         #minmax-barras { display: none; justify-content: center; flex-wrap: wrap; gap: 8px 20px; padding: 7px 12px; margin-bottom: 6px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 0.85em; }
         #minmax-barras span { display: flex; align-items: center; gap: 5px; font-weight: 600; white-space: nowrap; }
         #minmax-barras .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        /* === DARK MODE — Estilos específicos desta página === */
+        [data-theme="dark"] #menu-placeholder { background: #0f172a !important; }
+        [data-theme="dark"] .painel-header h1 { color: #e2e8f0; }
+        [data-theme="dark"] .painel-header p { color: #94a3b8; }
+        [data-theme="dark"] .date-selector label { color: #cbd5e1; }
+        [data-theme="dark"] .date-selector input { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        [data-theme="dark"] .card { background: #1e293b; border-color: #475569; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        [data-theme="dark"] .card-principal { color: #e2e8f0; }
+        [data-theme="dark"] .valor-principal { color: #e2e8f0; }
+        [data-theme="dark"] .data-item { border-bottom-color: #334155; }
+        [data-theme="dark"] .label { color: #cbd5e1; }
+        [data-theme="dark"] .valor { color: #e2e8f0; }
+        [data-theme="dark"] .futuros-info { color: #94a3b8; border-top-color: #334155; }
+        [data-theme="dark"] .card-futuros ul li { color: #cbd5e1; }
+        [data-theme="dark"] .tabela-wrapper { background-color: #1e293b; border-color: #475569; }
+        [data-theme="dark"] .tabela-precos tbody tr:nth-child(even) { background-color: #0f172a; }
+        [data-theme="dark"] .tabela-precos tbody tr:nth-child(odd) { background-color: #1e293b; }
+        [data-theme="dark"] .tabela-precos th, [data-theme="dark"] .tabela-precos td { border-bottom-color: #475569; color: #e2e8f0; }
+        [data-theme="dark"] .tabela-precos thead th { background-color: #0f172a; }
+        [data-theme="dark"] .chart-type-toggle button { background: #1e293b; color: #94a3b8; border-color: #475569; }
+        [data-theme="dark"] .chart-type-toggle button:hover { background: #334155; border-color: #64748b; }
+        [data-theme="dark"] .chart-type-toggle button.active { background: #e2e8f0; color: #0f172a; border-color: #e2e8f0; }
+        [data-theme="dark"] #minmax-barras { background: #1e293b; border-color: #475569; color: #cbd5e1; }
+        [data-theme="dark"] #loading-indicator { background-color: rgba(15, 23, 42, 0.85); }
+        [data-theme="dark"] .data-badge-secao { background: #334155; border-color: #475569; color: #94a3b8; }
+        [data-theme="dark"] #grafico-container { background: #1e293b; border-radius: 8px; }
     </style>
 </head>
 <body>
+
+<button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">🌙</button>
+
 <header>
     <div class="header-content">
         <div class="header-title-container">
@@ -271,6 +301,7 @@
 
 <div id="footer-placeholder"></div>
 
+<script src="theme.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -543,9 +574,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Configurações específicas por tipo de gráfico
         const isBarras = (tipoGrafico === 'column');
+        const _dk = document.documentElement.getAttribute('data-theme') === 'dark';
+        const _txtC = _dk ? '#e2e8f0' : '#333';
+        const _bgC = _dk ? '#1e293b' : '#ffffff';
+
         const chartTypeConfig = isBarras
-            ? { type: 'column', height: 770, zoomType: 'x' }
-            : { type: 'line',   height: 770, zoomType: 'x' };
+            ? { type: 'column', height: 770, zoomType: 'x', backgroundColor: _bgC, style: { color: _txtC } }
+            : { type: 'line',   height: 770, zoomType: 'x', backgroundColor: _bgC, style: { color: _txtC } };
         const seriesExtraConfig = isBarras
             ? { pointPadding: 0.05, groupPadding: 0.1 }
             : { connectNulls: false };
@@ -570,9 +605,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let xAxisConfig = {
             categories: dadosDoDiaCompleto.map(d => d.intervalo),
-            title: { text: 'Hora PT' },
+            title: { text: 'Hora PT', style: { color: _txtC } },
             crosshair: true,
-            labels: { rotation: -45, step: 4, align: 'right' },
+            labels: { rotation: -45, step: 4, align: 'right', style: { color: _txtC } },
             plotBands: [] 
         };
 
@@ -601,12 +636,12 @@ document.addEventListener('DOMContentLoaded', function() {
         try { 
             const chart = Highcharts.chart('grafico-container', { 
                 chart: chartTypeConfig, 
-                title: { text: tituloGrafico }, 
-                subtitle: { text: 'Pode arrastar horizontalmente no gráfico para fazer zoom.' },
+                title: { text: tituloGrafico, style: { color: _txtC } }, 
+                subtitle: { text: 'Pode arrastar horizontalmente no gráfico para fazer zoom.', style: { color: _txtC } },
                 xAxis: xAxisConfig, 
                 yAxis: { 
-                    title: { text: 'Preço (€/MWh)' }, 
-                    labels: { format: '{value:,.0f} €' }, 
+                    title: { text: 'Preço (€/MWh)', style: { color: _txtC } }, 
+                    labels: { format: '{value:,.0f} €', style: { color: _txtC } }, 
                     plotLines: plotLines 
                 }, 
                 tooltip: { 
@@ -617,7 +652,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 legend: { 
                     layout: 'horizontal', 
                     align: 'center', 
-                    verticalAlign: 'bottom' 
+                    verticalAlign: 'bottom',
+                    itemStyle: { color: _txtC }
                 }, 
                 exporting: { 
                     filename: nomeFicheiroBase, 
@@ -684,6 +720,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (ultimosArgsGrafico) atualizarGrafico(...ultimosArgsGrafico);
         });
     }
+
+    // Reagir a mudanças de tema (dark mode toggle)
+    document.addEventListener('themeChanged', function() {
+        if (ultimosArgsGrafico) atualizarGrafico(...ultimosArgsGrafico);
+    });
 
     // --- PROCESSO DE INICIALIZAÇÃO ---
     fetch(URL_DADOS_ATUAIS)

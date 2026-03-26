@@ -101,9 +101,30 @@
         }
         #erro-periodo { display: none; width: 95%; max-width: 1200px; margin: 0 auto 10px auto; padding: 10px 16px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; color: #856404; font-size: 0.9em; text-align: center; }
         input.input-erro { border-color: #dc3545 !important; box-shadow: 0 0 0 2px rgba(220,53,69,0.2); }
+
+        /* === DARK MODE — Estilos específicos desta página === */
+        [data-theme="dark"] #menu-placeholder { background: #0f172a !important; }
+        [data-theme="dark"] .painel-header h1 { color: #e2e8f0; }
+        [data-theme="dark"] .painel-header p { color: #94a3b8; }
+        [data-theme="dark"] .date-selector-periodo label { color: #cbd5e1; }
+        [data-theme="dark"] .date-selector-periodo input { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        [data-theme="dark"] .card { background: #1e293b; border-color: #475569; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        [data-theme="dark"] .card-principal { color: #e2e8f0; }
+        [data-theme="dark"] .valor-principal { color: #e2e8f0; }
+        [data-theme="dark"] .data-item { border-bottom-color: #334155; }
+        [data-theme="dark"] .label { color: #cbd5e1; }
+        [data-theme="dark"] .valor { color: #e2e8f0; }
+        [data-theme="dark"] .grafico-container { background: #1e293b; border-radius: 8px; }
+        [data-theme="dark"] #loading-indicator { background-color: rgba(15, 23, 42, 0.85); }
+        [data-theme="dark"] #erro-periodo { background-color: #332b00; border-color: #665600; color: #ffd54f; }
+        [data-theme="dark"] #media-mes-futuros-container p { background-color: #1e293b; border-color: #475569; color: #cbd5e1; }
+        [data-theme="dark"] #media-mes-futuros-container strong { color: #e2e8f0; }
     </style>
 </head>
 <body>
+
+<button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">🌙</button>
+
 <header>
     <div class="header-content"> 
         <div class="header-title-container"> 
@@ -238,6 +259,7 @@
 
 <div id="footer-placeholder"></div>
 
+<script src="theme.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -247,6 +269,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const URL_HISTORICO_BASE = URL_BASE + "omie_historico_";
     const ANO_INICIO_HISTORICO = 2010;
     // --- FIM CONFIGURAÇÕES ---
+
+    // Helper Dark Mode para Highcharts
+    function _hcDark() {
+        const dk = document.documentElement.getAttribute('data-theme') === 'dark';
+        return { bg: dk ? '#1e293b' : '#fff', txt: dk ? '#e2e8f0' : '#333' };
+    }
 
     const MAX_DIAS_PERIODO = 730; // Limitar a 2 anos
 
@@ -554,14 +582,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const tituloGrafico = `Médias Diárias OMIE de ${dataInicioCSV} a ${dataFimCSV} ${isDataFimUltimoDiaOMIE ? '(PT até 23h)' : ''}`;
         const nomeFicheiroBase = `medias-diarias-omie-${dataInicioCSV.replace(/\//g, '-')}-a-${dataFimCSV.replace(/\//g, '-')}`;
         
+        const _d1 = _hcDark();
         Highcharts.chart('grafico-diario-container', { 
-            chart: { type: 'line', zoomType: 'x', height: 600 }, 
-            title: { text: tituloGrafico }, 
-            subtitle: { text: 'Pode arrastar horizontalmente no gráfico para fazer zoom.' },
+            chart: { type: 'line', zoomType: 'x', height: 600, backgroundColor: _d1.bg, style: { color: _d1.txt } }, 
+            title: { text: tituloGrafico, style: { color: _d1.txt } }, 
+            subtitle: { text: 'Pode arrastar horizontalmente no gráfico para fazer zoom.', style: { color: _d1.txt } },
             xAxis: { 
                 type: 'datetime', 
-                title: { text: 'Data' }, 
+                title: { text: 'Data', style: { color: _d1.txt } }, 
                 crosshair: true, 
+                labels: { style: { color: _d1.txt } },
                 dateTimeLabelFormats: { 
                     day: '%e %b %Y', 
                     week: '%e %b %Y', 
@@ -570,8 +600,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 } 
             }, 
             yAxis: { 
-                title: { text: 'Preço Médio Diário (€/MWh)' }, 
-                labels: { format: '{value:,.0f} €' } 
+                title: { text: 'Preço Médio Diário (€/MWh)', style: { color: _d1.txt } }, 
+                labels: { format: '{value:,.0f} €', style: { color: _d1.txt } } 
             }, 
             tooltip: { 
                 shared: true, 
@@ -582,7 +612,8 @@ document.addEventListener('DOMContentLoaded', function() {
             legend: { 
                 layout: 'horizontal', 
                 align: 'center', 
-                verticalAlign: 'bottom' 
+                verticalAlign: 'bottom',
+                itemStyle: { color: _d1.txt }
             }, 
             exporting: { 
                 filename: nomeFicheiroBase, 
@@ -610,7 +641,8 @@ document.addEventListener('DOMContentLoaded', function() {
         dadosReaisDoPeriodo.forEach(row => { let hour = -1; if (row.localTimestamp) { hour = row.localTimestamp.getHours(); } else { try { hour = parseInt(row.hora.split(':')[0]); } catch(e){} } if (hour >= 0 && hour < 24) { if (row.preco_pt !== null) { hourlyAverages[hour].sumPT += row.preco_pt; hourlyAverages[hour].countPT++; } if (row.preco_es !== null) { hourlyAverages[hour].sumES += row.preco_es; hourlyAverages[hour].countES++; } } });
         const categories = hourlyAverages.map((_, h) => `[${String(h).padStart(2,'0')}:00-${String(h+1).padStart(2,'0') === '24' ? '00' : String(h+1).padStart(2,'0')}:00[`); const seriesDataPT = hourlyAverages.map(h => h.countPT > 0 ? h.sumPT / h.countPT : null); const seriesDataES = hourlyAverages.map(h => h.countES > 0 ? h.sumES / h.countES : null);
         const tituloGrafico = `Média Horária no Período (${dataInicioCSV} a ${dataFimCSV}) ${isDataFimUltimoDiaOMIE ? '(PT até 23h)' : ''}`; const nomeFicheiroBase = `media-horaria-omie-${dataInicioCSV.replace(/\//g, '-')}-a-${dataFimCSV.replace(/\//g, '-')}`;
-        Highcharts.chart('grafico-horario-container', { chart: { type: 'column', height: 600 }, title: { text: tituloGrafico }, xAxis: { categories: categories, title: { text: 'Hora PT' }, crosshair: true }, yAxis: { title: { text: 'Preço Médio Horário (€/MWh)' }, labels: { format: '{value:,.0f} €' } }, tooltip: { shared: true, valueSuffix: ' €/MWh', valueDecimals: 2 }, legend: { layout: 'horizontal', align: 'center', verticalAlign: 'bottom' }, exporting: { filename: nomeFicheiroBase, enabled: true, buttons: { contextButton: { menuItems: [ 'viewFullscreen', 'printChart', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadPDF', 'downloadSVG', 'separator', 'downloadCSV', 'downloadXLS', 'viewData' ] } } }, series: [ { name: 'Espanha', color: '#28a745', data: seriesDataES }, { name: 'Portugal', color: '#007bff', data: seriesDataPT } ] });
+        const _d2 = _hcDark();
+        Highcharts.chart('grafico-horario-container', { chart: { type: 'column', height: 600, backgroundColor: _d2.bg, style: { color: _d2.txt } }, title: { text: tituloGrafico, style: { color: _d2.txt } }, xAxis: { categories: categories, title: { text: 'Hora PT', style: { color: _d2.txt } }, crosshair: true, labels: { style: { color: _d2.txt } } }, yAxis: { title: { text: 'Preço Médio Horário (€/MWh)', style: { color: _d2.txt } }, labels: { format: '{value:,.0f} €', style: { color: _d2.txt } } }, tooltip: { shared: true, valueSuffix: ' €/MWh', valueDecimals: 2 }, legend: { layout: 'horizontal', align: 'center', verticalAlign: 'bottom', itemStyle: { color: _d2.txt } }, exporting: { filename: nomeFicheiroBase, enabled: true, buttons: { contextButton: { menuItems: [ 'viewFullscreen', 'printChart', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadPDF', 'downloadSVG', 'separator', 'downloadCSV', 'downloadXLS', 'viewData' ] } } }, series: [ { name: 'Espanha', color: '#28a745', data: seriesDataES }, { name: 'Portugal', color: '#007bff', data: seriesDataPT } ] });
     }
 
     // --- GRÁFICO QUARTO-HORÁRIO DETALHADO ---
@@ -620,15 +652,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const seriesDataES = dadosOrdenados.map(row => row.timestamp ? [row.timestamp, row.preco_es] : null).filter(p => p !== null);
         const tituloGrafico = `Valores Quarto-Horários no Período (${dataInicioCSV} a ${dataFimCSV}) ${isDataFimUltimoDiaOMIE ? '(PT até 23h)' : ''}`;
         const nomeFicheiroBase = `quartos-detalhe-omie-${dataInicioCSV.replace(/\//g, '-')}-a-${dataFimCSV.replace(/\//g, '-')}`;
+        const _d3 = _hcDark();
         Highcharts.chart('grafico-quartos-detalhado-container', {
-            chart: { type: 'line', zoomType: 'x', height: 600 }, title: { text: tituloGrafico }, subtitle: { text: 'Pode arrastar horizontalmente no gráfico para fazer zoom.' },
+            chart: { type: 'line', zoomType: 'x', height: 600, backgroundColor: _d3.bg, style: { color: _d3.txt } }, title: { text: tituloGrafico, style: { color: _d3.txt } }, subtitle: { text: 'Pode arrastar horizontalmente no gráfico para fazer zoom.', style: { color: _d3.txt } },
             xAxis: {
-                type: 'datetime', title: { text: 'Data e Hora (PT)' }, crosshair: true,
+                type: 'datetime', title: { text: 'Data e Hora (PT)', style: { color: _d3.txt } }, crosshair: true, labels: { style: { color: _d3.txt } },
                 dateTimeLabelFormats: { millisecond: '%H:%M', second: '%H:%M', minute: '%H:%M', hour: '%H:%M', day: '%e %b %H:%M', week: '%e %b', month: '%b \'%y', year: '%Y' },
             },
-            yAxis: { title: { text: 'Preço (€/MWh)' }, labels: { format: '{value:,.0f} €' } },
+            yAxis: { title: { text: 'Preço (€/MWh)', style: { color: _d3.txt } }, labels: { format: '{value:,.0f} €', style: { color: _d3.txt } } },
             tooltip: { shared: true, valueSuffix: ' €/MWh', valueDecimals: 2, xDateFormat: '%A, %e %b %Y %H:%M' }, // Formato UTC para tooltip
-            legend: { layout: 'horizontal', align: 'center', verticalAlign: 'bottom' },
+            legend: { layout: 'horizontal', align: 'center', verticalAlign: 'bottom', itemStyle: { color: _d3.txt } },
             exporting: { filename: nomeFicheiroBase, enabled: true, buttons: { contextButton: { menuItems: [ 'viewFullscreen', 'printChart', 'separator', 'downloadPNG', 'downloadJPEG', 'downloadPDF', 'downloadSVG', 'separator', 'downloadCSV', 'downloadXLS', 'viewData' ] } } },
             series: [ { name: 'Espanha', color: '#28a745', data: seriesDataES, connectNulls: false }, { name: 'Portugal', color: '#007bff', data: seriesDataPT, connectNulls: false } ]
         });
@@ -761,6 +794,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         })
         .catch(error => { console.error('Falha CRÍTICA:', error, error.stack); document.querySelector('main').innerHTML = `<p style="color: red; text-align: center; font-size: 1.2em; padding: 20px;">Ocorreu um erro crítico ao carregar os dados. Verifique a consola.</p>`; });
+    // Reagir a mudanças de tema (dark mode toggle)
+    document.addEventListener('themeChanged', function() {
+        atualizarDashboardPeriodo();
+    });
+
     // Carregar menu e footer
     fetch('menu.html').then(response => response.text()).then(data => { document.getElementById('menu-placeholder').innerHTML = data; }).catch(error => console.error('Erro ao carregar o menu:', error));
     fetch('footer.html').then(response => response.text()).then(data => { document.getElementById('footer-placeholder').innerHTML = data; }).catch(error => console.error('Erro ao carregar o footer:', error));

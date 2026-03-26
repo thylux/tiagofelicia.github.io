@@ -77,9 +77,19 @@
         .link-section { text-align: center; margin: 30px auto; }
         .link-section p { font-family: monospace; font-size: 0.9em; color: #555; background-color: #e9ecef; padding: 8px 12px; border-radius: 4px; display: inline-block; margin: 0; }
 
+        /* === DARK MODE — Estilos específicos desta página === */
+        [data-theme="dark"] #menu-placeholder { background: #0f172a !important; }
+        [data-theme="dark"] .painel-header h1 { color: #e2e8f0; }
+        [data-theme="dark"] .painel-header p { color: #94a3b8; }
+        [data-theme="dark"] .date-selector label { color: #cbd5e1; }
+        [data-theme="dark"] .date-selector input { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        [data-theme="dark"] #loading-indicator { color: #e2e8f0; }
+        [data-theme="dark"] #grafico-container { background: #1e293b; border-radius: 8px; }
     </style>
 </head>
 <body>
+
+<button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">🌙</button>
 
 <header>
     <div class="header-content">
@@ -127,6 +137,7 @@
 <div id="footer-placeholder"></div>
 
 
+<script src="theme.js"></script>
 <script>
 // Define o formato de números PT (sem separador de milhares)
 Highcharts.setOptions({
@@ -359,25 +370,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const nomeFicheiroBase = `Repartição Produção vs OMIE Spot_${dataTitulo.replace(/\//g, '')}_${hhmmLimite}`;
 
+        const _dk = document.documentElement.getAttribute('data-theme') === 'dark';
+        const _txtC = _dk ? '#e2e8f0' : '#333';
+        const _bgC = _dk ? '#1e293b' : '#ffffff';
 
         try {
             Highcharts.chart('grafico-container', {
                 
-                chart: { type: 'area', zoomType: 'x', height: 800 },
-                title: { text: tituloGrafico },
-                subtitle: { text: 'Pode arrastar horizontalmente no gráfico para fazer zoom.' },
+                chart: { type: 'area', zoomType: 'x', height: 800, backgroundColor: _bgC, style: { color: _txtC } },
+                title: { text: tituloGrafico, style: { color: _txtC } },
+                subtitle: { text: 'Pode arrastar horizontalmente no gráfico para fazer zoom.', style: { color: _txtC } },
 
-                xAxis: { categories: categoriasX, labels: { rotation: -45, step: 4, align: 'right' } },
+                xAxis: { categories: categoriasX, labels: { rotation: -45, step: 4, align: 'right', style: { color: _txtC } } },
                 
                 yAxis: [
                     { 
-                        title: { text: 'Produção (MW)' }, 
-                        labels: { format: '{value:.0f} MW' }, 
+                        title: { text: 'Produção (MW)', style: { color: _txtC } }, 
+                        labels: { format: '{value:.0f} MW', style: { color: _txtC } }, 
                         opposite: false 
                     }, 
                     { 
-                        title: { text: 'Preço OMIE (€/MWh)' }, 
-                        labels: { format: '{value:.0f} €' }, 
+                        title: { text: 'Preço OMIE (€/MWh)', style: { color: _txtC } }, 
+                        labels: { format: '{value:.0f} €', style: { color: _txtC } }, 
                         opposite: true,
                         plotLines: plotLinesOMIE
                     }
@@ -422,6 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     area: { stacking: 'normal', lineColor: '#666666', lineWidth: 1, marker: { enabled: false }, connectNulls: false },
                     line: { connectNulls: false }
                 },
+                legend: { itemStyle: { color: _txtC } },
                 
                 series: [
                     // (Ordem e cores)
@@ -519,6 +534,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (mainElement) {
             mainElement.innerHTML = `<p style="color: red; text-align: center; font-size: 1.2em; padding: 20px;">Ocorreu um erro crítico ao carregar os dados. Verifique a consola.<br><small>${error.message}</small></p>`;
         }
+    });
+
+    // Reagir a mudanças de tema (dark mode toggle)
+    document.addEventListener('themeChanged', function() {
+        if (seletorData.value) atualizarDashboard(seletorData.value);
     });
 
     // Carregar menu e footer

@@ -834,5 +834,10 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
+    // Reagir a mudanças de tema (dark mode toggle)
+    document.addEventListener('themeChanged', function() {
+        desenhaGrafico();
+    });
+
     init();
 });
