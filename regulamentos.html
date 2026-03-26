@@ -106,10 +106,22 @@
         @media (max-width: 600px) {
             .tab-buttons button { font-size: 14px; padding: 12px 10px; }
         }
+
+        /* === DARK MODE — Estilos específicos desta página === */
+        [data-theme="dark"] .tab-buttons { background-color: #0f172a; border-bottom-color: #3b82f6; }
+        [data-theme="dark"] .tab-buttons button { background-color: #1e293b; color: #94a3b8; }
+        [data-theme="dark"] .tab-buttons button:hover { background-color: #334155; color: #e2e8f0; }
+        [data-theme="dark"] .tab-buttons button.active { background-color: #3b82f6; color: #fff; }
+        [data-theme="dark"] .tab-content { background-color: #1e293b; border-color: #475569; color: #cbd5e1; }
+        [data-theme="dark"] .tab-content h3 { color: #e2e8f0; border-bottom-color: #475569; }
+        [data-theme="dark"] .tab-content a { color: #60a5fa; }
     </style>
     
 </head>
 <body>
+
+<button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">🌙</button>
+
 <header>
     <div class="header-content">
         <div class="header-title-container">
@@ -174,6 +186,8 @@
 </main>
 
 <div id="footer-placeholder"></div>
+
+<script src="theme.js"></script>
 
 <script>
     function abrirTab(evt, nomeCategoria) {
