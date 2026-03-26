@@ -130,6 +130,22 @@
     }
 
     }
+
+    /* === DARK MODE — Estilos específicos desta página === */
+    [data-theme="dark"] .tar-wrapper { color: #e2e8f0; }
+    [data-theme="dark"] .tar-title { color: #e2e8f0; }
+    [data-theme="dark"] .tar-brand a { color: #60a5fa; }
+    [data-theme="dark"] .tar-date { color: #94a3b8; }
+    [data-theme="dark"] .tar-table th, [data-theme="dark"] .tar-table td { border-color: #64748b; color: #e2e8f0; }
+    [data-theme="dark"] .tar-head { background: #334155; color: #e2e8f0; }
+    [data-theme="dark"] .tar-sub { background: #1e293b; color: #cbd5e1; }
+    [data-theme="dark"] .tar-gray95 { background: #283040; }
+    [data-theme="dark"] .tar-green { background: #1a3a2a; }
+    [data-theme="dark"] .tar-yellow { background: #3a3010; }
+    [data-theme="dark"] .tar-gray { background: #334155; }
+    [data-theme="dark"] .tar-pale-blue { background: #1a2a3a; }
+    [data-theme="dark"] .tar-blue { background: #1e3050; }
+    [data-theme="dark"] .tar-orange { background: #3a2518; }
     </style>
       
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-J4NWP00S4F"></script>
@@ -163,6 +179,9 @@
   </script>
 </head>
 <body>
+
+<button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">🌙</button>
+
 <header>
     <div class="header-content">
         <div class="header-title-container">
@@ -379,6 +398,9 @@
 </main>
 
 <div id="footer-placeholder"></div>
+
+<script src="theme.js"></script>
+
 
   <script src="script.js"></script>
   </body>

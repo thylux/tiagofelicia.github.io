@@ -24,6 +24,12 @@
     
     <link rel="stylesheet" href="style.css" />
     
+    <style>
+        /* === DARK MODE — Estilos específicos desta página === */
+        [data-theme="dark"] div[style*="background-color: #f1f1f1"] { background-color: #1e293b !important; border-left-color: #3b82f6 !important; color: #e2e8f0; }
+        [data-theme="dark"] hr[style] { border-top-color: #475569 !important; }
+    </style>
+    
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-J4NWP00S4F"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -32,7 +38,9 @@
       gtag('config', 'G-J4NWP00S4F');
     </script>
   </head>
-  <body>
+<body>
+
+<button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">🌙</button>
 
 <header>
     <div class="header-content">
@@ -94,6 +102,8 @@
 </main>
 
 <div id="footer-placeholder"></div>
+
+<script src="theme.js"></script>
 
 <script src="script.js"></script>
 

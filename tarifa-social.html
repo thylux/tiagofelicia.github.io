@@ -130,6 +130,22 @@
     }
 
     }
+
+    /* === DARK MODE — Estilos específicos desta página === */
+    [data-theme="dark"] .ts-wrapper { color: #e2e8f0; }
+    [data-theme="dark"] .ts-title { color: #e2e8f0; }
+    [data-theme="dark"] .ts-brand a { color: #60a5fa; }
+    [data-theme="dark"] .ts-date { color: #94a3b8; }
+    [data-theme="dark"] .ts-table th, [data-theme="dark"] .ts-table td { border-color: #64748b; color: #e2e8f0; }
+    [data-theme="dark"] .ts-head { background: #334155; color: #e2e8f0; }
+    [data-theme="dark"] .ts-sub { background: #1e293b; color: #cbd5e1; }
+    [data-theme="dark"] .ts-gray95 { background: #283040; }
+    [data-theme="dark"] .ts-green { background: #1a3a2a; }
+    [data-theme="dark"] .ts-yellow { background: #3a3010; }
+    [data-theme="dark"] .ts-gray { background: #334155; }
+    [data-theme="dark"] .ts-pale-blue { background: #1a2a3a; }
+    [data-theme="dark"] .ts-blue { background: #1e3050; }
+    [data-theme="dark"] .ts-orange { background: #3a2518; }
     </style>
 
   <!-- Google Analytics (GA4) -->
@@ -165,6 +181,10 @@
 
 </head>
 <body>
+
+<button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Alternar Modo Escuro" id="btn-dark-mode">🌙</button>
+
+
 <header>
     <div class="header-content">
         <div class="header-title-container">
@@ -308,6 +328,8 @@
 </main>
 
 <div id="footer-placeholder"></div>
+
+  <script src="theme.js"></script>
 
   <script src="script.js"></script>
   </body>
