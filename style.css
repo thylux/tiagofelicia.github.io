@@ -20,6 +20,7 @@ header {
     justify-content: center;
     font-family: Arial, sans-serif;
     font-size: 16px;
+    line-height: 1.4;
 }
 
 /* O contentor do conteúdo do header (logo, título, subtitulo) */
@@ -52,10 +53,11 @@ header .logo {
 }
 
 .header-content p {
-    margin: 5px 0 0 0; /* Margem no topo para separar do título */
-    padding-left: 50px; /* (altura do logo + gap) -> 35px + 15px */
+    margin: 5px 0 0 0;
+    padding-left: 50px;
     font-size: 1em;
-    color: #bdc3c7; /* Um cinzento claro para o subtítulo */
+    line-height: 1.4;
+    color: #bdc3c7;
 }
 
 /* Estilos do Rodapé (mantido separado do header) */
@@ -67,6 +69,7 @@ footer {
     border-top: 1px solid #4a627a;
     font-family: Arial, sans-serif;
     font-size: 16px;
+    line-height: 1.4;
 }
 
 nav {
@@ -75,6 +78,7 @@ nav {
     text-align: center;
     font-family: Arial, sans-serif;
     font-size: 16px;
+    line-height: 1.4;
 }
 
 nav a {
