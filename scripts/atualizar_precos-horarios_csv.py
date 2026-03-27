@@ -313,10 +313,20 @@ def calcular_preco_comercializador(nome_tarifario, omie_kwh, perdas, constantes_
         return (omie_kwh + constantes_dict.get('Galp_Ci', 0.0)) * perdas    
     
     elif "G9 Smart Dynamic" in nome_tarifario:
-        return (omie_kwh * constantes_dict.get('G9_FA', 0.0) * perdas + constantes_dict.get('G9_CGS', 0.0) + constantes_dict.get('G9_AC', 0.0))
+        # REGRA G9: Se o valor OMIE for negativo, considera-se 0.
+        omie_kwh_g9 = max(0, omie_kwh)
+        return (omie_kwh_g9 * constantes_dict.get('G9_FA', 0.0) * perdas + constantes_dict.get('G9_CGS', 0.0) + constantes_dict.get('G9_AC', 0.0))
     
     elif "MeoEnergia Tarifa Variável" in nome_tarifario:
-        return (omie_kwh + constantes_dict.get('Meo_K', 0.0)) * perdas        
+        # REGRA MEO 1: (omie_kwh + Meo_K) não pode ser negativo
+        base_meo = omie_kwh + constantes_dict.get('Meo_K', 0.0)
+        base_limitada = max(0, base_meo)
+        
+        # Calcula o resultado da fórmula
+        resultado_formula = base_limitada * perdas
+        
+        # REGRA MEO 2: Se o resultado final for negativo, aplica-se €0
+        return max(0, resultado_formula)    
     
     elif "Repsol Leve Sem Mais" in nome_tarifario:
         return (omie_kwh * perdas * constantes_dict.get('Repsol_FA', 0.0) + constantes_dict.get('Repsol_Q_Tarifa', 0.0)) + constantes_dict.get('Financiamento_TSE', 0.0)
