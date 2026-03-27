@@ -133,7 +133,7 @@ def gerar_tabelas_tarifarias(df_omie, ficheiro_config):
     comercializadores = [
         "Alfa Power Index BTN", "Coopérnico Base", "Coopérnico GO", "EDP Indexada Horária",
         "EZU Tarifa Indexada", "Galp Plano Dinâmico", "G9 Smart Dynamic",
-        "MeoEnergia Tarifa Variável", "Repsol Leve Sem Mais",
+        "MeoEnergia Tarifa Dinâmica", "Repsol Leve Sem Mais",
         "Iberdrola - Simples Indexado Dinâmico", "Plenitude - Tendência",
     ]
     ordem_ciclo = {
@@ -317,7 +317,7 @@ def calcular_preco_comercializador(nome_tarifario, omie_kwh, perdas, constantes_
         omie_kwh_g9 = max(0, omie_kwh)
         return (omie_kwh_g9 * constantes_dict.get('G9_FA', 0.0) * perdas + constantes_dict.get('G9_CGS', 0.0) + constantes_dict.get('G9_AC', 0.0))
     
-    elif "MeoEnergia Tarifa Variável" in nome_tarifario:
+    elif "MeoEnergia Tarifa Dinâmica" in nome_tarifario:
         # REGRA MEO 1: (omie_kwh + Meo_K) não pode ser negativo
         base_meo = omie_kwh + constantes_dict.get('Meo_K', 0.0)
         base_limitada = max(0, base_meo)
