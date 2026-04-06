@@ -1,5 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
-    // --- VARIÁVEIS GLOBAIS ---
+// --- VARIÁVEIS GLOBAIS ---
     let dadosEstruturados = {};
     let dadosCSVGlobal = "";
     let chartInstance = null; // Guardar referência ao gráfico
@@ -129,6 +128,51 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         atualizaTarifario();
+
+        // --- QUERY PARAMS: aplicar estado da URL após o carregamento inicial ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramDia = urlParams.get('dia');
+        const paramTarifario = urlParams.get('tarifario');
+        const paramOpcao = urlParams.get('opcao');
+
+        // Passo 1: aplicar 'dia' ('hoje', 'amanha' ou índice numérico)
+        if (paramDia) {
+            if (paramDia === 'hoje') {
+                diaSelect.value = hojePadrao;
+                atualizaTarifario();
+            } else if (paramDia === 'amanha') {
+                const fmtLx = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric' });
+                const amanhaStr = fmtLx.format(new Date(Date.now() + 24 * 60 * 60 * 1000));
+                if (Array.from(diaSelect.options).some(o => o.value === amanhaStr)) {
+                    diaSelect.value = amanhaStr;
+                    atualizaTarifario();
+                }
+            } else {
+                const idx = parseInt(paramDia);
+                if (!isNaN(idx) && idx >= 0 && idx < diaSelect.options.length) {
+                    diaSelect.selectedIndex = idx;
+                    atualizaTarifario();
+                }
+            }
+        }
+
+        // Passo 2: aplicar 'tarifario' por índice
+        if (paramTarifario !== null) {
+            const idx = parseInt(paramTarifario);
+            if (!isNaN(idx) && idx >= 0 && idx < tarifarioSelect.options.length) {
+                tarifarioSelect.selectedIndex = idx;
+                atualizaOpcao();
+            }
+        }
+
+        // Passo 3: aplicar 'opcao' por índice
+        if (paramOpcao !== null) {
+            const idx = parseInt(paramOpcao);
+            if (!isNaN(idx) && idx >= 0 && idx < opcaoSelect.options.length) {
+                opcaoSelect.selectedIndex = idx;
+                desenhaGrafico();
+            }
+        }
     }
 
     // Função auxiliar para calcular quartis (USADA NO GRÁFICO E NA TABELA)
@@ -323,6 +367,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const dados = dadosEstruturados[dia]?.[tarifario]?.[opcao];
         if (!dados) return;
 
+        // --- Atualizar URL com o estado atual (para preservar ao recarregar) ---
+        (function() {
+            const fmtLx = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric' });
+            const hojeStr = fmtLx.format(new Date());
+            const amanhaStr = fmtLx.format(new Date(Date.now() + 24 * 60 * 60 * 1000));
+            const diaSelect = document.getElementById("dropdownDia");
+            const tarifarioSelect = document.getElementById("dropdownTarifario");
+            const opcaoSelect = document.getElementById("dropdownOpcao");
+            let diaParam;
+            if (dia === hojeStr) diaParam = 'hoje';
+            else if (dia === amanhaStr) diaParam = 'amanha';
+            else diaParam = diaSelect.selectedIndex;
+            const qp = new URLSearchParams();
+            qp.set('dia', diaParam);
+            qp.set('tarifario', tarifarioSelect.selectedIndex);
+            qp.set('opcao', opcaoSelect.selectedIndex);
+            window.history.replaceState(null, '', '?' + qp.toString());
+        })();
+
         mostrarFormula(tarifario);
 
         // Destruir gráfico existente se houver
@@ -363,13 +426,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const stack4 = dados.colunas.map(v => v !== null && v > Q3 ? v : null);
 
         // Lógica "Agora"
-        const agoraLisboa = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Lisbon" }));
-        const diaLisboa = String(agoraLisboa.getDate()).padStart(2, '0');
-        const mesLisboa = String(agoraLisboa.getMonth() + 1).padStart(2, '0');
-        const anoLisboa = agoraLisboa.getFullYear();
-        const hojeEmLisboaDDMMYYYY = `${diaLisboa}/${mesLisboa}/${anoLisboa}`;
-        const horaAtualLisboa = agoraLisboa.getHours(); 
-        const minutoAtualLisboa = agoraLisboa.getMinutes();
+        const partesLisboa = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+        const hojeEmLisboaDDMMYYYY = `${partesLisboa.find(p => p.type === 'day').value}/${partesLisboa.find(p => p.type === 'month').value}/${partesLisboa.find(p => p.type === 'year').value}`;
+        const horaAtualLisboa = parseInt(partesLisboa.find(p => p.type === 'hour').value);
+        const minutoAtualLisboa = parseInt(partesLisboa.find(p => p.type === 'minute').value);
         const isHoje = (dia === hojeEmLisboaDDMMYYYY);
         const qhIndex = (horaAtualLisboa * 4) + Math.floor(minutoAtualLisboa / 15);
 
@@ -821,11 +881,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 dadosCSVGlobal = data;
                 parseCSV(data);
                 parseConstantes(data);
-                const agoraLisboa = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Lisbon" }));
-                const diaLisboa = String(agoraLisboa.getDate()).padStart(2, '0');
-                const mesLisboa = String(agoraLisboa.getMonth() + 1).padStart(2, '0');
-                const anoLisboa = agoraLisboa.getFullYear();
-                populaDropdowns(`${diaLisboa}/${mesLisboa}/${anoLisboa}`);
+                const hojeEmLisboa = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
+                populaDropdowns(hojeEmLisboa);
             })
             .catch(error => {
                 console.error("Erro CSV:", error);
