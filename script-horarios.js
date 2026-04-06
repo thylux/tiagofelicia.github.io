@@ -1,4 +1,5 @@
-// --- VARIÁVEIS GLOBAIS ---
+document.addEventListener('DOMContentLoaded', function () {
+    // --- VARIÁVEIS GLOBAIS ---
     let dadosEstruturados = {};
     let dadosCSVGlobal = "";
     let chartInstance = null; // Guardar referência ao gráfico
